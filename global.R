@@ -3,6 +3,7 @@ library(leaflet)
 library(tidyverse)
 library(sf)
 library(plotly)
+library(gt)
 
 # load shapefiles
 states = st_read("data/ncrStates.shp")

@@ -6,7 +6,8 @@ server <- function(input, output) {
     leaflet() %>%
       addTiles() %>%
       addPolygons(data = states, 
-                  layerId = ~NAME)
+                  layerId = ~NAME) %>%
+      addProviderTiles("Esri.WorldTopoMap")
   }
   
   # reactiveVal for the map object, and corresponding output object.
@@ -171,15 +172,38 @@ server <- function(input, output) {
                     line = list(color = "#c99f6e", width = 4),
                     hovertext = ~ round(leaching, 2),
                     hoverinfo = "text") %>%
-          layout(xaxis = list(title = "N fertilizer (N kg/ha)"),
+          layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
+                 xaxis = list(title = "N fertilizer (N kg/ha)"),
                  yaxis = list (title = " "),
                  hovermode = "x unified")
 
       })
-
-    #})
+      
+      output$range <- renderUI({
+        
+        req(clicks$count == 2)
+        
+        sliderInput(
+          inputId = "fertRange",
+          label = "N fertilizer (kg/ha)",
+          min = 0, max = 300, value = 100, step = 10
+        )
+      })
+      
+      output$values <- render_gt({
+        
+        req(clicks$count == 2)
+        
+        Nval <- unique(input$fertRange)
+        
+        df %>%
+          filter(fert == Nval) %>%
+          gt()
+      })
     
   })
+  
+  
   
   
   observeEvent(input$reset, {
@@ -187,9 +211,7 @@ server <- function(input, output) {
     react_map(base_map()) 
     # reset the click counts
     clicks$count <- 0
-    df <- NULL
-    print('cleared df')
-    print(head(df))
+    output$plot1 <- NULL
     
   })
   
