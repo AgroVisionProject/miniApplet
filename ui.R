@@ -12,13 +12,25 @@ ui <- fluidPage(
            tags$li("and then the site marker"),
            leafletOutput("map",height = 600)
     ),
-    column(6,
-           plotlyOutput(outputId = "plot1"),
-           br(),
-           uiOutput("range"),
-           gt_output("values")
-           
-    )
+    column(6, 
+           fluidRow(
+             uiOutput('plotDone'),
+             plotlyOutput(outputId = "plot1"),
+             hr()
+           ),
+           fluidRow( 
+             conditionalPanel(
+              condition = "output.plot1",
+                column(#width = 10, offset = 1,
+                  10,
+                  align = "center",
+                  tags$h4("Move the slider to see the response values"),
+                  uiOutput("range"),
+                  gt_output("values"))
+              )
+            )
+                    
+)
     
   ), 
   # ),

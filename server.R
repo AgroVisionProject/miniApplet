@@ -100,10 +100,6 @@ server <- function(input, output) {
   
   observeEvent(input$map_marker_click, {
     
-    validate(
-      need(df, "select new location")
-    )
-    
     
     map_click_info <- input$map_marker_click
     #print("marker click info")
@@ -156,12 +152,18 @@ server <- function(input, output) {
     df = data.frame(fert = fert, yield = yield_y, leaching = leach_y)
     print(df)
 
-    #observeEvent(input$plot, {
-
 
       output$plot1 <- renderPlotly({
-
-       
+        
+        # validate(
+        #   need(df, "select new location")
+        # )
+        # 
+        # if(is.null(df)) {
+        #   output$plot1 <- NULL
+        # }
+        
+        output$plotDone <- renderUI({tags$input(type="hidden", value="TRUE")})
 
         plot_ly(df, x = ~fert, y = ~ yield, name = "Yield (bu/ac)", 
                 type = 'scatter', mode = 'lines',
@@ -181,8 +183,6 @@ server <- function(input, output) {
       
       output$range <- renderUI({
         
-        req(clicks$count == 2)
-        
         sliderInput(
           inputId = "fertRange",
           label = "N fertilizer (kg/ha)",
@@ -192,13 +192,18 @@ server <- function(input, output) {
       
       output$values <- render_gt({
         
-        req(clicks$count == 2)
-        
         Nval <- unique(input$fertRange)
         
         df %>%
           filter(fert == Nval) %>%
-          gt()
+          mutate(leaching = round(leaching, 2),
+                 yield = round(yield, 2)) %>%
+          gt() %>%
+          cols_label(
+            fert = "N fertilizer (kg/ha)",
+            yield = "Yield (bu/ac)",
+            leaching = "Nitrate leaching (kg/ha)"
+          )
       })
     
   })
@@ -212,6 +217,7 @@ server <- function(input, output) {
     # reset the click counts
     clicks$count <- 0
     output$plot1 <- NULL
+    df <- NULL
     
   })
   
