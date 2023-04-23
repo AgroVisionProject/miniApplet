@@ -10,11 +10,18 @@ ui <- fluidPage(
            tags$li("first click on your state"),
            tags$li("and then your county"),
            tags$li("and then the site marker"),
+           br(),
+           actionButton("reset", "Clear locations"),
+           hr(),
            leafletOutput("map",height = 600)
     ),
     column(6, 
            fluidRow(
-             uiOutput('plotDone'),
+             selectInput(inputId = "simName",
+                         label = "Choose cropping system",
+                         choices = simNames),
+             actionButton("plot", "Draw plots"),
+             #uiOutput('plotDone'),
              plotlyOutput(outputId = "plot1"),
              hr()
            ),
@@ -29,11 +36,6 @@ ui <- fluidPage(
                   gt_output("values"))
               )
             )
-                    
-)
-    
-  ), 
-  # ),
-  br(),
-  actionButton("reset", "Clear locations")
+           )
+    )
 )

@@ -4,20 +4,23 @@ library(tidyverse)
 library(sf)
 library(plotly)
 library(gt)
+library(reactlog)
 
 # load shapefiles
 states = st_read("data/ncrStates.shp")
 counties = st_read("data/ncrCounties.shp")
 
 # load data
-leach_df <- read.csv("data/leachDataSim1.csv")
-yield_df <- read.csv("data/yieldDataSim1.csv")
+leach_df <- read.csv("data/leachData.csv")
+yield_df <- read.csv("data/yieldData.csv")
 
-map_df <- yield_df %>%
-  distinct(across(c(lon, lat, NAME, STATE_NAME)))
+sites <- read.csv("data/sampleSites.csv")
 
 # define fertilizer/x axis
 fert = seq(from = 0, to = 300, by = 10)
+
+sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
+simNames = sims$cropSystem
 
 # define equations
 # const = rep(cons_ex1$a, times = length(fert))
