@@ -5,6 +5,7 @@ library(sf)
 library(plotly)
 library(gt)
 library(reactlog)
+library(shinyjs)
 
 reactlog_enable()
 
@@ -12,21 +13,27 @@ reactlog_enable()
 states = st_read("data/ncrStates.shp")
 counties = st_read("data/ncrCounties.shp")
 
-# load data
+# load data-----------------
 leach_df <- read.csv("data/leachData.csv")
 yield_df <- read.csv("data/yieldData.csv")
 sites <- read.csv("data/sampleSites.csv")
-
-# define fertilizer/x axis
-fert = seq(from = 0, to = 300, by = 10)
-
 sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
 sims  <- sims %>%
   filter(simulation == 1 
          | simulation == 2)
 simNames = sims$cropSystem
 
-# determine respose curve
+# define fertilizer/x axis----------
+fert = seq(from = 0, to = 300, by = 1)
+# convert kg/ha to lb/ac
+kgha_to_lbac <- function(x) {
+  lbac <- x*(2.20462/2.47105)
+  return(lbac)
+}
+
+
+
+# determine response curve--------
 responseCurve <- function(dataframe, fun) {
   
   response <- c()

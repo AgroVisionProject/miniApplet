@@ -78,6 +78,9 @@ server <- function(input, output, session) {
       clearGroup("sampleSite") %>%
       addMarkers(lng = lon, lat = lat, group = "sampleSite")
     
+    # show plot button
+    shinyjs::enable("plot")
+    
   })
   
   observeEvent(selectedPoint(), {
@@ -86,7 +89,7 @@ server <- function(input, output, session) {
 
   })
   
-
+  
   df <- eventReactive(input$simName, {
 
     req(selectedPoint())
@@ -118,7 +121,7 @@ server <- function(input, output, session) {
     yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
     leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
 
-    data.frame(fert = fert, yield = yield_y, leaching = leach_y)
+    data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y))
 
   })
 
@@ -179,7 +182,7 @@ server <- function(input, output, session) {
     # reset the map
     react_map(base_map())
     output$plot1 <- NULL
-    #df <- NULL
+    shinyjs::disable("plot")
 
   })
 
