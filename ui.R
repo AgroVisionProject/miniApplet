@@ -46,14 +46,15 @@ ui <- fluidPage(
   
   sidebarLayout(
     sidebarPanel(tags$h4("To view site specific corn yield and nitrate leaching responses to fertilizer N:"),
-                 tags$li("first click on your state"),
-                 tags$li("and then your county"),
-                 tags$li("and then the site marker"),
+                 tags$li("Click on your state"),
+                 tags$li("then your county"),
+                 tags$li("then the site marker"),
                  br(),
                  actionButton("reset", "Clear locations"),
-                 br(),
+                 hr(),
+                 tags$h4("Next, select a land management scenario and draw plots."),
                  selectInput(inputId = "simName",
-                             label = "Choose cropping system",
+                             label = "Cropping systems",
                              choices = simNames),
                  shinyjs::useShinyjs(),
                  disabled(

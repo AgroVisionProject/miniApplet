@@ -89,8 +89,9 @@ server <- function(input, output, session) {
 
   })
   
-  
-  df <- eventReactive(input$simName, {
+  # make df---------------------------
+  df <- eventReactive({input$simName
+                      input$plot}, {
 
     req(selectedPoint())
     #eq(input$simName)
@@ -125,6 +126,7 @@ server <- function(input, output, session) {
 
   })
 
+  # make plot------------------
   observeEvent(input$plot, {
 
     req(df())
@@ -137,12 +139,17 @@ server <- function(input, output, session) {
       plot_ly(dat, x = ~fert, y = ~ yield, name = "Yield (bu/ac)",
               type = 'scatter', mode = 'lines',
               line = list(color = "#5dbb63", width = 4),
-              hovertext = ~ round(yield, 2),
+              hovertext = ~ paste("Yield:", round(yield, 1), "bu/ac"),
               hoverinfo = "text") %>%
         add_trace(y = ~ leaching, name = "Nitrate leaching (lb/ac)",
                   line = list(color = "#c99f6e", width = 4),
-                  hovertext = ~ round(leaching, 2),
+                  hovertext = ~ paste("Nitrate leaching:", round(leaching, 1), "lbs/ac"),
                   hoverinfo = "text") %>%
+        add_trace(y = 0,
+                  opacity = 0,
+                  hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
+                  hoverinfo = "text",
+                  showlegend = F) %>%
         layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
                xaxis = list(title = "N fertilizer (N lb/ac)"),
                yaxis = list (title = " "),
@@ -154,8 +161,8 @@ server <- function(input, output, session) {
 
       sliderInput(
         inputId = "range",
-        label = "N fertilizer (kg/ha)",
-        min = 0, max = 300, value = 100, step = 10
+        label = "N fertilizer (lb/ac)",
+        min = 0, max = 270, value = 100, step = 10
       )
     })
     
@@ -166,8 +173,8 @@ server <- function(input, output, session) {
 
       dat %>%
         filter(fert == input$range) %>%
-        mutate(leaching = round(leaching, 2),
-               yield = round(yield, 2)) %>%
+        mutate(leaching = round(leaching, 1),
+               yield = round(yield, 1)) %>%
         gt() %>%
         cols_label(
           fert = "N fertilizer (lb/ac)",
@@ -178,6 +185,7 @@ server <- function(input, output, session) {
 
    })
 
+  # reset vals---------------
   observeEvent(input$reset, {
     # reset the map
     react_map(base_map())

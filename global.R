@@ -10,17 +10,15 @@ library(shinyjs)
 reactlog_enable()
 
 # load shapefiles
-states = st_read("data/ncrStates.shp")
-counties = st_read("data/ncrCounties.shp")
+states = st_read("data/ncr_states_simple.shp")
+counties = st_read("data/ncr_counties_simple.shp")
+
 
 # load data-----------------
 leach_df <- read.csv("data/leachData.csv")
 yield_df <- read.csv("data/yieldData.csv")
 sites <- read.csv("data/sampleSites.csv")
 sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
-sims  <- sims %>%
-  filter(simulation == 1 
-         | simulation == 2)
 simNames = sims$cropSystem
 
 # define fertilizer/x axis----------
