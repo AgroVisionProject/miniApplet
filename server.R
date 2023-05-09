@@ -78,7 +78,8 @@ server <- function(input, output, session) {
       clearGroup("sampleSite") %>%
       addMarkers(lng = lon, lat = lat, group = "sampleSite")
     
-    # show plot button
+    # show land management selection and plot button
+    shinyjs::enable("simName")
     shinyjs::enable("plot")
     
   })

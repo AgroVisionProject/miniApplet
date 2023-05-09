@@ -15,9 +15,9 @@ counties = st_read("data/ncr_counties_simple.shp")
 
 
 # load data-----------------
-leach_df <- read.csv("data/leachData.csv")
-yield_df <- read.csv("data/yieldData.csv")
-sites <- read.csv("data/sampleSites.csv")
+leach_df <- read_csv("data/leachData.csv")
+yield_df <- read_csv("data/yieldData.csv")
+sites <- read_csv("data/sampleSites.csv")
 sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
 simNames = sims$cropSystem
 

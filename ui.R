@@ -53,23 +53,26 @@ ui <- fluidPage(
                  actionButton("reset", "Clear locations"),
                  hr(),
                  tags$h4("Next, select a land management scenario and draw plots."),
-                 selectInput(inputId = "simName",
-                             label = "Cropping systems",
-                             choices = simNames),
+                 disabled(selectInput(inputId = "simName",
+                                      label = "Cropping systems",
+                                      choices = simNames))
+                 ,
                  shinyjs::useShinyjs(),
                  disabled(
                    actionButton("plot", "Draw plots")
+                 ),
+                 conditionalPanel(
+                   condition = "output.plot1",
+                   hr(),
+                   tags$h4("Move the slider to see the response values"),
+                   uiOutput("range"),
+                   gt_output("values")
                  )
                  ),
     mainPanel(leafletOutput("map",height = 600),
               br(),
-              plotlyOutput(outputId = "plot1"),
-              conditionalPanel(
-                condition = "output.plot1",
-                tags$h4("Move the slider to see the response values"),
-                uiOutput("range"),
-                gt_output("values")
-              )
+              plotlyOutput(outputId = "plot1")
+              
   )
   )
 )
