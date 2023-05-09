@@ -69,7 +69,7 @@ ui <- fluidPage(
                    gt_output("values")
                  )
                  ),
-    mainPanel(leafletOutput("map",height = 600),
+    mainPanel(leafletOutput("map"),
               br(),
               plotlyOutput(outputId = "plot1")
               

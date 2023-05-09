@@ -9,15 +9,15 @@ server <- function(input, output, session) {
                   group = "state", 
                   col = "blue",
                   layerId = ~state) %>%
-      addPolygons(data = counties, 
-                  group = "county",
-                  col = "darkgreen") %>%
-      addCircleMarkers(data = sites, 
-                       lat = ~lat, lng = ~lon,
-                       group = "sites") %>%
+      # addPolygons(data = counties, 
+      #             group = "county",
+      #             col = "darkgreen") %>%
+      # addCircleMarkers(data = sites, 
+      #                  lat = ~lat, lng = ~lon,
+      #                  group = "sites") %>%
       groupOptions("state", zoomLevels = 1:10) %>%
-      groupOptions("county", zoomLevels = 7:10) %>%
-      groupOptions("sites", zoomLevels = 9:15) %>%
+      #groupOptions("county", zoomLevels = 7:10) %>%
+      #groupOptions("sites", zoomLevels = 9:15) %>%
       addProviderTiles("Esri.WorldTopoMap")
   }
   
@@ -31,6 +31,28 @@ server <- function(input, output, session) {
   output$map <- renderLeaflet({
     react_map()
   })
+  
+  observeEvent(TRUE, {
+    
+    map <- leafletProxy("map")
+
+    delay(250,
+          map %>%
+            addPolygons(data = counties,
+                        group = "county",
+                        col = "darkgreen") %>%
+            groupOptions("county", zoomLevels = 7:10)
+          )
+    
+    delay(500,
+          map %>%
+            addCircleMarkers(data = sites,
+                             lat = ~lat, lng = ~lon,
+                             group = "sites") %>%
+            groupOptions("sites", zoomLevels = 9:15)
+          )
+  })
+  
   
   
   observeEvent(input$map_shape_click, {
@@ -84,11 +106,11 @@ server <- function(input, output, session) {
     
   })
   
-  observeEvent(selectedPoint(), {
-
-    print(selectedPoint())
-
-  })
+  # observeEvent(selectedPoint(), {
+  # 
+  #   print(selectedPoint())
+  # 
+  # })
   
   # make df---------------------------
   df <- eventReactive({input$simName
@@ -163,7 +185,7 @@ server <- function(input, output, session) {
       sliderInput(
         inputId = "range",
         label = "N fertilizer (lb/ac)",
-        min = 0, max = 270, value = 100, step = 10
+        min = 0, max = 268, value = 100, step = 1
       )
     })
     
@@ -172,10 +194,15 @@ server <- function(input, output, session) {
       
       req(input$range)
 
-      dat %>%
+      newdat <- dat %>%
         filter(fert == input$range) %>%
         mutate(leaching = round(leaching, 1),
-               yield = round(yield, 1)) %>%
+               yield = round(yield, 1)) 
+
+      # remove duplicates
+      newdat <- newdat[1,]
+     
+      newdat %>%
         gt() %>%
         cols_label(
           fert = "N fertilizer (lb/ac)",

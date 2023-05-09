@@ -22,7 +22,7 @@ sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
 simNames = sims$cropSystem
 
 # define fertilizer/x axis----------
-fert = seq(from = 0, to = 300, by = 1)
+fert = seq(from = 0, to = 300, by = 1) #kg/ha
 # convert kg/ha to lb/ac
 kgha_to_lbac <- function(x) {
   lbac <- x*(2.20462/2.47105)
