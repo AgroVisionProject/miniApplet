@@ -5,14 +5,14 @@ server <- function(input, output, session) {
   base_map <- function() {
     leaflet() %>%
       addTiles() %>%
-      addPolygons(data = states, 
-                  group = "state", 
+      addPolygons(data = states,
+                  group = "state",
                   col = "blue",
                   layerId = ~state) %>%
-      # addPolygons(data = counties, 
+      # addPolygons(data = counties,
       #             group = "county",
       #             col = "darkgreen") %>%
-      # addCircleMarkers(data = sites, 
+      # addCircleMarkers(data = sites,
       #                  lat = ~lat, lng = ~lon,
       #                  group = "sites") %>%
       groupOptions("state", zoomLevels = 1:10) %>%
@@ -20,7 +20,7 @@ server <- function(input, output, session) {
       #groupOptions("sites", zoomLevels = 9:15) %>%
       addProviderTiles("Esri.WorldTopoMap")
   }
-  
+
   
   # reactiveVal for the map object, and corresponding output object.
   react_map <- reactiveVal(base_map())
@@ -32,20 +32,20 @@ server <- function(input, output, session) {
     react_map()
   })
   
-  observeEvent(TRUE, {
+  observeEvent(react_map(), {
     
-    map <- leafletProxy("map")
+    #map <- leafletProxy("map")
 
-    delay(250,
-          map %>%
+    delay(100,
+          leafletProxy("map") %>%
             addPolygons(data = counties,
                         group = "county",
                         col = "darkgreen") %>%
             groupOptions("county", zoomLevels = 7:10)
           )
     
-    delay(500,
-          map %>%
+    delay(150,
+          leafletProxy("map") %>%
             addCircleMarkers(data = sites,
                              lat = ~lat, lng = ~lon,
                              group = "sites") %>%
