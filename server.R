@@ -9,15 +9,19 @@ server <- function(input, output, session) {
                   group = "state",
                   col = "blue",
                   layerId = ~state) %>%
-      # addPolygons(data = counties,
-      #             group = "county",
-      #             col = "darkgreen") %>%
+      addPolygons(data = counties,
+                  group = "county",
+                  col = "darkgreen") %>%
       # addCircleMarkers(data = sites,
       #                  lat = ~lat, lng = ~lon,
       #                  group = "sites") %>%
-      groupOptions("state", zoomLevels = 1:10) %>%
-      #groupOptions("county", zoomLevels = 7:10) %>%
-      #groupOptions("sites", zoomLevels = 9:15) %>%
+      groupOptions("state", zoomLevels = 1:9) %>%
+      groupOptions("county", zoomLevels = 7:10) %>%
+      #groupOptions("sites", zoomLevels = 11:15) %>%
+      # addLayersControl(
+      #   overlayGroups = c("state", "county", "site"),
+      #   options = layersControlOptions(collapsed = FALSE)
+      # ) %>%
       addProviderTiles("Esri.WorldTopoMap")
   }
 
@@ -32,49 +36,67 @@ server <- function(input, output, session) {
     react_map()
   })
   
-  observeEvent(react_map(), {
-    
-    #map <- leafletProxy("map")
-
-    delay(100,
-          leafletProxy("map") %>%
-            addPolygons(data = counties,
-                        group = "county",
-                        col = "darkgreen") %>%
-            groupOptions("county", zoomLevels = 7:10)
-          )
-    
-    delay(150,
-          leafletProxy("map") %>%
-            addCircleMarkers(data = sites,
-                             lat = ~lat, lng = ~lon,
-                             group = "sites") %>%
-            groupOptions("sites", zoomLevels = 9:15)
-          )
-  })
+  # observeEvent(react_map(), {
+  #   
+  #   #map <- leafletProxy("map")
+  # 
+  #   delay(200,
+  #         leafletProxy("map") %>%
+  #           addPolygons(data = counties,
+  #                       group = "county",
+  #                       col = "darkgreen") %>%
+  #           groupOptions("county", zoomLevels = 7:11)
+  #         )
+  #   
+  #   delay(400,
+  #         leafletProxy("map") %>%
+  #           addCircleMarkers(data = sites,
+  #                            lat = ~lat, lng = ~lon,
+  #                            group = "sites") %>%
+  #           groupOptions("sites", zoomLevels = 10:15)
+  #         )
+  # })
   
-  
+  stateSites <- reactiveValues()
+  stateSites$df <- data.frame()
+  #countySites <- reactiveVal()
   
   observeEvent(input$map_shape_click, {
     
+    print("map click")
     # open map to country view 
     p <- input$map_shape_click # get input value
     if (is.null(p))  
       return()
-    print(p)
+    #print(p)
     
     # zoom to state view
     if(p$group == "state") {
+      
+      print(paste("state", p$id))
      
       leafletProxy("map") %>%
         setView(lat = p$lat, lng = p$lng, zoom = 7)
+      
+      # subset sites to state
+      stateSites$df <- sites %>%
+        filter(state == p$id)
+      
     }
     
     #zoom to county view with marker points
     if(p$group == "county") {
       
+      print(p)
+      
+      # filter stateSites to countySites
+      # countySites <- stateSites %>%
+      #   filter(county == p$id)
       # county map with observation sites
       leafletProxy("map") %>%
+        addCircleMarkers(data = stateSites$df,
+                         lat = ~lat, lng = ~lon,
+                         group = "sites") %>%
         setView(lat = p$lat, lng = p$lng, zoom = 10) 
       
     }
@@ -85,6 +107,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$map_marker_click, {
     
+    print("point selection")
     
     click <- input$map_marker_click
     lat <- click$lat
