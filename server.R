@@ -89,9 +89,6 @@ server <- function(input, output, session) {
       
       print(p)
       
-      # filter stateSites to countySites
-      # countySites <- stateSites %>%
-      #   filter(county == p$id)
       # county map with observation sites
       leafletProxy("map") %>%
         addCircleMarkers(data = stateSites$df,
