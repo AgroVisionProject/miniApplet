@@ -62,4 +62,38 @@ responseCurve <- function(dataframe, fun) {
   
 }
 
+# make data frame----------------------
+
+makeDF <- function(simulation, site_lat, site_lon) {
+  
+  req(is.na(simulation) == FALSE)
+  #print("inside function")
+  
+  yield_df_sum <- yield_df %>%
+    filter(sim == simulation,
+           lat == site_lat,
+           lon == site_lon)
+
+  # print("yield df")
+  # print(nrow(yield_df_sum))
+  # print(head(yield_df_sum))
+
+  leach_df_sum <- leach_df %>%
+    filter(sim == simulation,
+           lat == site_lat,
+           lon == site_lon)
+
+  # print("leach df")
+  # print(head(leach_df_sum))
+
+  yieldFun <- yield_df_sum$fun
+  leachFun <- leach_df_sum$fun
+
+  yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
+  leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
+
+  data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y))
+  
+}
+
 
