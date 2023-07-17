@@ -53,11 +53,12 @@ ui <- fluidPage(
                  actionButton("reset", "Clear locations"),
                  hr(),
                  tags$h4("Next, select up to 2 land management scenario and draw plots."),
-                 disabled(selectInput(inputId = "simName",
-                                      label = "Cropping systems",
-                                      multiple = TRUE,
-                                      choices = simNames))
-                 ,
+                 #selectizeInput(..., options = list(maxItems = 2))
+                 disabled(selectizeInput(inputId = "simName",
+                                         label = "Cropping systems",
+                                         multiple = TRUE,
+                                         options = list(maxItems = 2),
+                                         choices = simNames)),
                  shinyjs::useShinyjs(),
                  # disabled(
                  #   actionButton("plot", "Draw plots")
