@@ -135,6 +135,13 @@ server <- function(input, output, session) {
   # make df---------------------------
   # df <- eventReactive({input$simName
   #                     input$plot}, {
+  dat1 <- reactiveValues()
+  dat1$df <- data.frame()
+  simname1 <- reactiveVal()
+  dat2 <- reactiveValues()
+  dat2$df <- data.frame()
+  simname2 <- reactiveVal()
+  
   observe({
 
     req(selectedPoint())
@@ -152,6 +159,9 @@ server <- function(input, output, session) {
 
     simNumber1 <- filter(sims, cropSystem == input$simName[1])
     selected_sim1 <- simNumber1$simulation
+    print("simName")
+    print(simNumber1$cropSystem)
+    simname1 <- simNumber1$cropSystem
 
     dat1 <- makeDF(sim = selected_sim1, site_lat = site_lat, site_lon = site_lon)
     dat1 <- dat1 %>%
@@ -163,6 +173,8 @@ server <- function(input, output, session) {
       print("sim is length 2")
       simNumber2 <- filter(sims, cropSystem == input$simName[2])
       selected_sim2 <- simNumber2$simulation
+      print(simNumber2$cropSystem)
+      simname2 <<- simNumber2$cropSystem
       dat2 <- makeDF(sim = selected_sim2, site_lat = site_lat, site_lon = site_lon)
       dat2 <- dat2 %>%
         rename(yield2 = yield,
@@ -200,33 +212,34 @@ server <- function(input, output, session) {
           layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
                  xaxis = list(title = "N fertilizer (N lb/ac)"),
                  yaxis = list (title = " "),
-                 hovermode = "x unified")
+                 hovermode = "x unified",
+                 legend = list(orientation = 'h', y = -0.2))
       } 
       else 
         {print("test2")
-        plot_ly(compareDat, x = ~fert10, y = ~ yield1, name = "sim 1: Yield (bu/ac)",
+        plot_ly(compareDat, x = ~fert10, y = ~ yield1, name = paste0(simname1, ": Yield (bu/ac)"),
                 type = 'scatter', mode = 'lines+markers',
                 line = list(color = "#5dbb63", width = 2),
                 marker = list(symbol = "x", size = 10, color = "#5dbb63"),
                 hovertext = ~ paste("Yield 1:",round(yield1, 1), "bu/ac"),
                 hoverinfo = "text") %>%
-          add_trace(y = ~ leach1, name = "sim 1: NO3 leaching (lb/ac)",
+          add_trace(y = ~ leach1, name = paste0(simname1, ": NO3 leaching (lb/ac)"),
                     line = list(color = "#5dbb63", width = 2),
                     hovertext = ~paste("Nitrate leaching 1:",round(leach1, 1), "lbs/ac"),
                     marker = list(symbol = "circle", color = "#5dbb63"),
                     #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                     hoverinfo = "text") %>%
-          add_trace(y = ~ yield2, name = "sim 2: Yield (bu/ac)",
+          add_trace(y = ~ yield2, name = paste0(simname2, ": Yield (bu/ac)"),
                     line = list(color = "#c99f6e", width = 2),
                     hovertext = ~paste("Yield 2:",round(yield2, 1), "bu/ac"),
                     marker = list(symbol = "x", color = "#c99f6e"),
                     #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                     hoverinfo = "text") %>%
-          add_trace(y = ~ leach2, name = "sim 2: NO3 leaching (lb/ac)",
+          add_trace(y = ~ leach2, name = paste0(simname2, ": NO3 leaching (lb/ac)"),
                     line = list(color = "#c99f6e", width = 2),
                     hovertext = ~paste("Nitrate leaching 2:",round(leach2, 1), "lbs/ac"),
                     #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-                    marker = list(symbol = "x", color = "#c99f6e"),
+                    marker = list(symbol = "circle", color = "#c99f6e"),
                     hoverinfo = "text") %>%
           add_trace(y = 0,
                     opacity = 0,
@@ -236,7 +249,9 @@ server <- function(input, output, session) {
           layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
                  xaxis = list(title = "N fertilizer (N lb/ac)"),
                  yaxis = list (title = " "),
-                 hovermode = "x unified")
+                 hovermode = "x unified",
+                 legend = list(orientation = 'h',
+                               y = -0.2))
       }
 
     })
@@ -310,36 +325,80 @@ server <- function(input, output, session) {
     #            hovermode = "x unified")
     # })
 
-    output$range <- renderUI({
+    output$range1 <- renderUI({
 
       sliderInput(
-        inputId = "range",
+        inputId = "range_dat1",
         label = "N fertilizer (lb/ac)",
         min = 0, max = 268, value = 100, step = 1
       )
     })
 
 
-    output$values <- render_gt({
+    output$values1 <- render_gt({
 
-      req(input$range)
+      req(input$range_dat1)
 
-      newdat <- dat1 %>%
-        filter(fert == input$range) %>%
+      newdat1 <- dat1 %>%
+        filter(fert == input$range_dat1) %>%
         mutate(leaching = round(leach1, 1),
                yield = round(yield1, 1))
+      
+      print('dat1gt')
+      print(head(newdat1))
 
       # remove duplicates
-      newdat <- newdat[1,]
+      newdat1 <- newdat1[1,]
 
-      newdat %>%
+      newdat1 %>%
+        select(c(fert, yield, leaching)) %>%
         gt() %>%
         cols_label(
           fert = "N fertilizer (lb/ac)",
           yield = "Yield (bu/ac)",
           leaching = "Nitrate leaching (lb/ac)"
-        )
+        ) %>%
+        tab_header(title = paste(simname1, "output"))
      })
+    
+    output$range2 <- renderUI({
+      
+      req(dat2$df)
+
+      sliderInput(
+        inputId = "range_dat2",
+        label = "N fertilizer (lb/ac)",
+        min = 0, max = 268, value = 100, step = 1
+      )
+    })
+
+
+    output$values2 <- render_gt({
+
+      req(input$range_dat2)
+      req(dat2$df)
+
+      newdat2 <- dat2 %>%
+        filter(fert == input$range_dat2) %>%
+        mutate(leaching = round(leach2, 1),
+               yield = round(yield2, 1))
+
+      print('dat2gt')
+      print(head(newdat2))
+
+      # remove duplicates
+      newdat2 <- newdat2[1,]
+
+      newdat2 %>%
+        select(c(fert, yield, leaching)) %>%
+        gt() %>%
+        cols_label(
+          fert = "N fertilizer (lb/ac)",
+          yield = "Yield (bu/ac)",
+          leaching = "Nitrate leaching (lb/ac)"
+        ) %>%
+        tab_header(title = paste(simname2, "output"))
+    })
 
   })
 

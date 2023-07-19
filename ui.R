@@ -67,14 +67,15 @@ ui <- fluidPage(
                    condition = "output.plot1",
                    hr(),
                    tags$h4("Move the slider to see the response values"),
-                   uiOutput("range"),
-                   gt_output("values")
+                   uiOutput("range1"),
+                   gt_output("values1"),
+                   uiOutput("range2"),
+                   gt_output("values2")
                  )
                  ),
     mainPanel(leafletOutput("map"),
               br(),
-              plotlyOutput(outputId = "plot1"),
-              plotlyOutput(outputId = "plot2")
+              plotlyOutput(outputId = "plot1")
               
   )
   )
