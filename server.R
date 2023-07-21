@@ -1,29 +1,21 @@
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
   
-  # functions-----------------------
-  base_map <- function() {
-    leaflet() %>%
-      addTiles() %>%
-      addPolygons(data = states,
-                  group = "state",
-                  col = "blue",
-                  layerId = ~state) %>%
-      addPolygons(data = counties,
-                  group = "county",
-                  col = "darkgreen") %>%
-      # addCircleMarkers(data = sites,
-      #                  lat = ~lat, lng = ~lon,
-      #                  group = "sites") %>%
-      groupOptions("state", zoomLevels = 1:9) %>%
-      groupOptions("county", zoomLevels = 7:10) %>%
-      #groupOptions("sites", zoomLevels = 11:15) %>%
-      # addLayersControl(
-      #   overlayGroups = c("state", "county", "site"),
-      #   options = layersControlOptions(collapsed = FALSE)
-      # ) %>%
-      addProviderTiles("Esri.WorldTopoMap")
-  }
+  # map -----------------------
+  # base_map <- function() {
+  #   leaflet() %>%
+  #     addTiles() %>%
+  #     addPolygons(data = states,
+  #                 group = "state",
+  #                 col = "blue",
+  #                 layerId = ~state) %>%
+  #     addPolygons(data = counties,
+  #                 group = "county",
+  #                 col = "darkgreen") %>%
+  #     groupOptions("state", zoomLevels = 1:9) %>%
+  #     groupOptions("county", zoomLevels = 7:10) %>%
+  #     addProviderTiles("Esri.WorldTopoMap")
+  # }
 
   
   # reactiveVal for the map object, and corresponding output object.
@@ -36,27 +28,7 @@ server <- function(input, output, session) {
     react_map()
   })
   
-  # observeEvent(react_map(), {
-  #   
-  #   #map <- leafletProxy("map")
-  # 
-  #   delay(200,
-  #         leafletProxy("map") %>%
-  #           addPolygons(data = counties,
-  #                       group = "county",
-  #                       col = "darkgreen") %>%
-  #           groupOptions("county", zoomLevels = 7:11)
-  #         )
-  #   
-  #   delay(400,
-  #         leafletProxy("map") %>%
-  #           addCircleMarkers(data = sites,
-  #                            lat = ~lat, lng = ~lon,
-  #                            group = "sites") %>%
-  #           groupOptions("sites", zoomLevels = 10:15)
-  #         )
-  # })
-  
+ 
   stateSites <- reactiveValues()
   stateSites$df <- data.frame()
   #countySites <- reactiveVal()
@@ -73,7 +45,7 @@ server <- function(input, output, session) {
     # zoom to state view
     if(p$group == "state") {
       
-      print(paste("state", p$id))
+      #print(paste("state", p$id))
      
       leafletProxy("map") %>%
         setView(lat = p$lat, lng = p$lng, zoom = 7)
@@ -87,7 +59,7 @@ server <- function(input, output, session) {
     #zoom to county view with marker points
     if(p$group == "county") {
       
-      print(p)
+      #print(p)
       
       # county map with observation sites
       leafletProxy("map") %>%
@@ -125,353 +97,279 @@ server <- function(input, output, session) {
     #shinyjs::enable("plot")
     
   })
-  
-  # observeEvent(selectedPoint(), {
-  # 
-  #   print(selectedPoint())
-  # 
-  # })
-  
-  # make df---------------------------
-  # df <- eventReactive({input$simName
-  #                     input$plot}, {
-  dat1 <- reactiveValues()
-  dat1$df <- data.frame()
-  simname1 <- reactiveVal()
-  dat2 <- reactiveValues()
-  dat2$df <- data.frame()
-  simname2 <- reactiveVal()
-  
-  observe({
 
+  
+  # data creation ---------------------------
+  
+  ## data1----------------
+  dat1 <- reactive({
+    
     req(selectedPoint())
     req(input$simName)
     
-     site_lat <- selectedPoint()$lat
-     print(paste("lat:", site_lat))
-     site_lon <- selectedPoint()$lon
-     print(paste("lon:", site_lon))
+    site_lat <- selectedPoint()$lat
+    site_lon <- selectedPoint()$lon
+    simulation1 <- filter(sims, cropSystem == input$simName[1]) 
+    print('simulation1')
+    print(simulation1$simulation)
+
     
-
-    #eq(input$simName)
-    print("first sim")
-    print(length(input$simName))
-
-    simNumber1 <- filter(sims, cropSystem == input$simName[1])
-    selected_sim1 <- simNumber1$simulation
-    print("simName")
-    print(simNumber1$cropSystem)
-    simname1 <- simNumber1$cropSystem
-
-    dat1 <- makeDF(sim = selected_sim1, site_lat = site_lat, site_lon = site_lon)
-    dat1 <- dat1 %>%
+    df <- makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon) %>%
       rename(yield1 = yield,
              leach1 = leaching)
-    print(head(dat1))
     
+    print("dat1")
+    print(head(df))
+    df
+ 
+  })
+  
+  ## data2---------------------------
+  dat2 <- reactive({
+    
+    req(length(input$simName) == 2)
+    
+    site_lat <- selectedPoint()$lat
+    site_lon <- selectedPoint()$lon
+    simulation2 <- filter(sims, cropSystem == input$simName[2])
+    
+    df <- makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon) %>%
+      rename(yield2 = yield,
+             leach2 = leaching)
+    
+    print("dat2")
+    print(head(df))
+    df
+    
+  })
+  
+  ## compareDat--------------------
+  compareDat <- reactive({
+    
+    req(length(input$simName) == 2)
+    print("inside compare")
+    df1 <- dat1()
+    df2 <- dat2()
+    
+    compareDat <- left_join(df1, df2, by = "fert")
+    fert10 <- seq(from = 0, to = 300, by = 10)
+    fert10 <- data.frame(fert10 = fert10)
+    compareDat_fert10 <- left_join(fert10, compareDat, by = c("fert10" = "fert"))
+    
+    print(head(compareDat_fert10))
+    compareDat_fert10
+    
+  })
+  
+  # plots--------------------------
+  
+  output$plotUI <- renderUI({
+
+    req(input$simName)
+    print("inside render UI")
+
+    plot <- c()
+    if(length(input$simName) >= 1) {
+      print(length(input$simName))
+      print(input$simName)
+      print("plot1")
+      plot <- plotlyOutput('plot1')
+      }
     if(length(input$simName) == 2) {
-      print("sim is length 2")
-      simNumber2 <- filter(sims, cropSystem == input$simName[2])
-      selected_sim2 <- simNumber2$simulation
-      print(simNumber2$cropSystem)
-      simname2 <<- simNumber2$cropSystem
-      dat2 <- makeDF(sim = selected_sim2, site_lat = site_lat, site_lon = site_lon)
-      dat2 <- dat2 %>%
-        rename(yield2 = yield,
-               leach2 = leaching)
-      print(head(dat2))
+      print("plot2")
 
-      compareDat <- left_join(dat1, dat2, by = "fert")
-      print(head(compareDat))
-      # make compareDat based on a sequence of fert at every 10 increments
-      fert10 <- seq(from = 0, to = 300, by = 10)
-      fert10 <- data.frame(fert10 = fert10)
-      compareDat <- left_join(fert10, compareDat, by = c("fert10" = "fert"))
-      print(head(compareDat))
-    }
+      plot <- plotlyOutput('plot2')
 
-    
-    output$plot1 <- renderPlotly({
-
-      if(length(input$simName) == 1)
-      { print("test")
-        plot_ly(dat1, x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
-                type = 'scatter', mode = 'lines+markers',
-                line = list(color = "#5dbb63", width = 1),
-                hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
-                hoverinfo = "text") %>%
-          add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
-                    line = list(color = "#c99f6e", width = 1),
-                    hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
-                    hoverinfo = "text") %>%
-          add_trace(y = 0,
-                    opacity = 0,
-                    hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
-                    hoverinfo = "text",
-                    showlegend = F) %>%
-          layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
-                 xaxis = list(title = "N fertilizer (N lb/ac)"),
-                 yaxis = list (title = " "),
-                 hovermode = "x unified",
-                 legend = list(orientation = 'h', y = -0.2))
-      } 
-      else 
-        {print("test2")
-        plot_ly(compareDat, x = ~fert10, y = ~ yield1, name = paste0(simname1, ": Yield (bu/ac)"),
-                type = 'scatter', mode = 'lines+markers',
-                line = list(color = "#5dbb63", width = 2),
-                marker = list(symbol = "x", size = 10, color = "#5dbb63"),
-                hovertext = ~ paste("Yield 1:",round(yield1, 1), "bu/ac"),
-                hoverinfo = "text") %>%
-          add_trace(y = ~ leach1, name = paste0(simname1, ": NO3 leaching (lb/ac)"),
-                    line = list(color = "#5dbb63", width = 2),
-                    hovertext = ~paste("Nitrate leaching 1:",round(leach1, 1), "lbs/ac"),
-                    marker = list(symbol = "circle", color = "#5dbb63"),
-                    #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-                    hoverinfo = "text") %>%
-          add_trace(y = ~ yield2, name = paste0(simname2, ": Yield (bu/ac)"),
-                    line = list(color = "#c99f6e", width = 2),
-                    hovertext = ~paste("Yield 2:",round(yield2, 1), "bu/ac"),
-                    marker = list(symbol = "x", color = "#c99f6e"),
-                    #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-                    hoverinfo = "text") %>%
-          add_trace(y = ~ leach2, name = paste0(simname2, ": NO3 leaching (lb/ac)"),
-                    line = list(color = "#c99f6e", width = 2),
-                    hovertext = ~paste("Nitrate leaching 2:",round(leach2, 1), "lbs/ac"),
-                    #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-                    marker = list(symbol = "circle", color = "#c99f6e"),
-                    hoverinfo = "text") %>%
-          add_trace(y = 0,
-                    opacity = 0,
-                    hovertext = ~ paste("N fert rate:",fert10, "lbs N/ac"),
-                    hoverinfo = "text",
-                    showlegend = F) %>%
-          layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
-                 xaxis = list(title = "N fertilizer (N lb/ac)"),
-                 yaxis = list (title = " "),
-                 hovermode = "x unified",
-                 legend = list(orientation = 'h',
-                               y = -0.2))
       }
 
-    })
+    plot
 
-   
-    # 
-    #print(paste("sim:", selected_sim))
-    
-    # simNumber <- filter(sims, cropSystem == input$simName[1])
-    # selected_sim <- simNumber$simulation
-
-    # yield_df_sum <- yield_df %>%
-    #   filter(sim == selected_sim,
-    #          lat == site_lat,
-    #          lon == site_lon)
-    # print(yield_df_sum)
-
-    # leach_df_sum1 <- leach_df %>%
-    #   filter(sim == selected_sim1,
-    #          lat == site_lat,
-    #          lon == site_lon)
-    # #print(leach_df_sum)
-    # 
-    # yieldFun <- yield_df_sum$fun
-    # leachFun <- leach_df_sum$fun
-    # 
-    # yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
-    # leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
-    # 
-    # dat1 <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y))
-    #dat <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y))
-    #dat <- df()
-    
-
-    
-    # output$plot2 <- renderPlotly({
-    # 
-    # 
-    #   plot_ly(compareDat, x = ~fert10, y = ~ yield1, name = "sim 1: Yield (bu/ac)",
-    #           type = 'scatter', mode = 'lines+markers',
-    #           line = list(color = "#5dbb63", width = 2),
-    #           marker = list(symbol = "x", size = 10, color = "#5dbb63"),
-    #           hovertext = ~ paste("Yield 1:",round(yield1, 1), "bu/ac"),
-    #           hoverinfo = "text") %>%
-    #     add_trace(y = ~ leach1, name = "sim 1: NO3 leaching (lb/ac)",
-    #               line = list(color = "#5dbb63", width = 2),
-    #               hovertext = ~paste("Nitrate leaching 1:",round(leach1, 1), "lbs/ac"),
-    #               marker = list(symbol = "circle", color = "#5dbb63"),
-    #               #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-    #               hoverinfo = "text") %>%
-    #     add_trace(y = ~ yield2, name = "sim 2: Yield (bu/ac)",
-    #               line = list(color = "#c99f6e", width = 2),
-    #               hovertext = ~paste("Yield 2:",round(yield2, 1), "bu/ac"),
-    #               marker = list(symbol = "x", color = "#c99f6e"),
-    #               #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-    #               hoverinfo = "text") %>%
-    #     add_trace(y = ~ leach2, name = "sim 2: NO3 leaching (lb/ac)",
-    #               line = list(color = "#c99f6e", width = 2),
-    #               hovertext = ~paste("Nitrate leaching 2:",round(leach2, 1), "lbs/ac"),
-    #               #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-    #               marker = list(symbol = "x", color = "#c99f6e"),
-    #               hoverinfo = "text") %>%
-    #     add_trace(y = 0,
-    #               opacity = 0,
-    #               hovertext = ~ paste("N fert rate:",fert10, "lbs N/ac"),
-    #               hoverinfo = "text",
-    #               showlegend = F) %>%
-    #     layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
-    #            xaxis = list(title = "N fertilizer (N lb/ac)"),
-    #            yaxis = list (title = " "),
-    #            hovermode = "x unified")
-    # })
-
-    output$range1 <- renderUI({
-
-      sliderInput(
-        inputId = "range_dat1",
-        label = "N fertilizer (lb/ac)",
-        min = 0, max = 268, value = 100, step = 1
-      )
     })
 
 
-    output$values1 <- render_gt({
+ output$plot1 <- renderPlotly({
 
-      req(input$range_dat1)
+   req(dat1())
+   print('plot1')
+   print(head(dat1()))
 
-      newdat1 <- dat1 %>%
-        filter(fert == input$range_dat1) %>%
-        mutate(leaching = round(leach1, 1),
-               yield = round(yield1, 1))
+   plot_ly(dat1(), x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
+           type = 'scatter', mode = 'lines+markers',
+           line = list(color = "#5dbb63", width = 1),
+           hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
+           hoverinfo = "text") %>%
+     add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
+               line = list(color = "#c99f6e", width = 1),
+               hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
+               hoverinfo = "text") %>%
+     add_trace(y = 0,
+               opacity = 0,
+               hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
+               hoverinfo = "text",
+               showlegend = F) %>%
+     layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
+            xaxis = list(title = "N fertilizer (N lb/ac)"),
+            yaxis = list (title = " "),
+            hovermode = "x unified",
+            legend = list(orientation = 'h', y = -0.2))
+   })
+
+ output$plot2 <- renderPlotly({
+
+   req(compareDat())
+   sim1 <- input$simName[1]
+   sim2 <- input$simName[2]
+
+   plot_ly(compareDat(), x = ~fert10, y = ~ yield1, name = paste0(sim1, ": Yield (bu/ac)"),
+           type = 'scatter', mode = 'lines+markers',
+           line = list(color = "#5dbb63", width = 2),
+           marker = list(symbol = "x", size = 10, color = "#5dbb63"),
+           hovertext = ~ paste("Yield 1:",round(yield1, 1), "bu/ac"),
+           hoverinfo = "text") %>%
+     add_trace(y = ~ leach1, name = paste0(sim1, ": NO3 leaching (lb/ac)"),
+               line = list(color = "#5dbb63", width = 2),
+               hovertext = ~paste("Nitrate leaching 1:",round(leach1, 1), "lbs/ac"),
+               marker = list(symbol = "circle", color = "#5dbb63"),
+               #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
+               hoverinfo = "text") %>%
+     add_trace(y = ~ yield2, name = paste0(sim2, ": Yield (bu/ac)"),
+               line = list(color = "#c99f6e", width = 2),
+               hovertext = ~paste("Yield 2:",round(yield2, 1), "bu/ac"),
+               marker = list(symbol = "x", color = "#c99f6e"),
+               #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
+               hoverinfo = "text") %>%
+     add_trace(y = ~ leach2, name = paste0(sim2, ": NO3 leaching (lb/ac)"),
+               line = list(color = "#c99f6e", width = 2),
+               hovertext = ~paste("Nitrate leaching 2:",round(leach2, 1), "lbs/ac"),
+               #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
+               marker = list(symbol = "circle", color = "#c99f6e"),
+               hoverinfo = "text") %>%
+     add_trace(y = 0,
+               opacity = 0,
+               hovertext = ~ paste("N fert rate:",fert10, "lbs N/ac"),
+               hoverinfo = "text",
+               showlegend = F) %>%
+     layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
+            xaxis = list(title = "N fertilizer (N lb/ac)"),
+            yaxis = list (title = " "),
+            hovermode = "x unified",
+            legend = list(orientation = 'h',
+                          y = -0.3))
+
+ })
+
+    
+output$sliderUI <- renderUI({
       
-      print('dat1gt')
-      print(head(newdat1))
+  req(input$simName)
+  ui <- list()
+  if(length(input$simName) >= 1) {
+    # print(length(input$simName))
+    # print(input$simName)
+    ui <- list(
+      gt_output("values1"),
+      br(),
+      uiOutput("range")
+    )
+    if(length(input$simName) == 2)  {
+      print(length(input$simName))
+      print(input$simName)
+      ui <- list(gt_output("values1"),
+                 br(),
+                 gt_output("values2"),
+                 br(),
+                 uiOutput("range")
+      )
+    }
+  }
+  
+  ui
+      
+})
+
+output$range <- renderUI({
+    sliderInput(
+    inputId = "range_dat",
+    label = "N fertilizer (lb/ac)",
+    min = 0, max = 268, value = 100, step = 1
+  )
+})
+
+
+output$values1 <- render_gt({
+    req(input$range_dat)
+  
+    newdat1 <- dat1() %>%
+    filter(fert == input$range_dat) %>%
+    mutate(leaching = round(leach1, 1),
+           yield = round(yield1, 1))
+  
+    print('dat1gt')
+    print(head(newdat1))
 
       # remove duplicates
-      newdat1 <- newdat1[1,]
+    newdat1 <- newdat1[1,]
 
-      newdat1 %>%
-        select(c(fert, yield, leaching)) %>%
-        gt() %>%
-        cols_label(
-          fert = "N fertilizer (lb/ac)",
-          yield = "Yield (bu/ac)",
-          leaching = "Nitrate leaching (lb/ac)"
-        ) %>%
-        tab_header(title = paste(simname1, "output"))
-     })
+    newdat1 %>%
+      select(c(fert, yield, leaching)) %>%
+      gt() %>%
+      cols_label(
+        fert = "N fertilizer (lb/ac)",
+        yield = "Yield (bu/ac)",
+        leaching = "Nitrate leaching (lb/ac)"
+      ) %>%
+      tab_header(title = paste(input$simName[1], "output"))
+   })
     
-    output$range2 <- renderUI({
-      
-      req(dat2$df)
-
-      sliderInput(
-        inputId = "range_dat2",
-        label = "N fertilizer (lb/ac)",
-        min = 0, max = 268, value = 100, step = 1
-      )
-    })
-
-
-    output$values2 <- render_gt({
-
-      req(input$range_dat2)
-      req(dat2$df)
-
-      newdat2 <- dat2 %>%
-        filter(fert == input$range_dat2) %>%
-        mutate(leaching = round(leach2, 1),
-               yield = round(yield2, 1))
-
-      print('dat2gt')
-      print(head(newdat2))
-
-      # remove duplicates
-      newdat2 <- newdat2[1,]
-
-      newdat2 %>%
-        select(c(fert, yield, leaching)) %>%
-        gt() %>%
-        cols_label(
-          fert = "N fertilizer (lb/ac)",
-          yield = "Yield (bu/ac)",
-          leaching = "Nitrate leaching (lb/ac)"
-        ) %>%
-        tab_header(title = paste(simname2, "output"))
-    })
-
-  })
-
-  # make plot------------------
-  # observeEvent(input$plot, {
+  # output$range2 <- renderUI({
+  #   
+  #     #req(dat2$df)
   # 
-  #   req(df())
-    # dat <- df()
-    # print(head(dat))
-    # 
-    # output$plot1 <- renderPlotly({
-    # 
-    # 
-    #   plot_ly(dat, x = ~fert, y = ~ yield, name = "Yield (bu/ac)",
-    #           type = 'scatter', mode = 'lines+markers',
-    #           line = list(color = "#5dbb63", width = 1),
-    #           hovertext = ~ paste("Yield:", round(yield, 1), "bu/ac"),
-    #           hoverinfo = "text") %>%
-    #     add_trace(y = ~ leaching, name = "Nitrate leaching (lb/ac)",
-    #               line = list(color = "#c99f6e", width = 1),
-    #               hovertext = ~ paste("Nitrate leaching:", round(leaching, 1), "lbs/ac"),
-    #               hoverinfo = "text") %>%
-    #     add_trace(y = 0,
-    #               opacity = 0,
-    #               hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
-    #               hoverinfo = "text",
-    #               showlegend = F) %>%
-    #     layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
-    #            xaxis = list(title = "N fertilizer (N lb/ac)"),
-    #            yaxis = list (title = " "),
-    #            hovermode = "x unified")
-    # 
-    # })
-    # 
-    # output$range <- renderUI({
-    # 
-    #   sliderInput(
-    #     inputId = "range",
-    #     label = "N fertilizer (lb/ac)",
-    #     min = 0, max = 268, value = 100, step = 1
-    #   )
-    # })
-    # 
-    # 
-    # output$values <- render_gt({
-    # 
-    #   req(input$range)
-    # 
-    #   newdat <- dat %>%
-    #     filter(fert == input$range) %>%
-    #     mutate(leaching = round(leaching, 1),
-    #            yield = round(yield, 1))
-    # 
-    #   # remove duplicates
-    #   newdat <- newdat[1,]
-    # 
-    #   newdat %>%
-    #     gt() %>%
-    #     cols_label(
-    #       fert = "N fertilizer (lb/ac)",
-    #       yield = "Yield (bu/ac)",
-    #       leaching = "Nitrate leaching (lb/ac)"
-    #     )
-    #  })
-  # 
-  #  })
+  #   sliderInput(
+  #     inputId = "range_dat2",
+  #     label = "N fertilizer (lb/ac)",
+  #     min = 0, max = 268, value = 100, step = 1
+  #   )
+  # })
+
+
+output$values2 <- render_gt({
+    req(input$range_dat)
+    #req(dat2$df)
+    newdat2 <- dat2() %>%
+      filter(fert == input$range_dat) %>%
+      mutate(leaching = round(leach2, 1),
+             yield = round(yield2, 1))
+    print('dat2gt')
+    print(head(newdat2))
+
+    # remove duplicates
+    newdat2 <- newdat2[1,]
+
+    newdat2 %>%
+      select(c(fert, yield, leaching)) %>%
+      gt() %>%
+      cols_label(
+        fert = "N fertilizer (lb/ac)",
+        yield = "Yield (bu/ac)",
+        leaching = "Nitrate leaching (lb/ac)"
+      ) %>%
+      tab_header(title = paste(input$simName[2], "output"))
+})
+
 
   # reset vals---------------
   observeEvent(input$reset, {
     # reset the map
     react_map(base_map())
-    output$plot1 <- NULL
-    shinyjs::disable("plot")
+    output$plot2 <- NULL
+    output$sliderUI <- NULL
+    updateSelectizeInput(session = getDefaultReactiveDomain(), "simName", selected = character(0))
+    #shinyjs::disable("plot2")
+    #shinyjs::disable("sliderUI")
+    dat1 <- NULL
+    dat2 <- NULL
+    
 
   })
 

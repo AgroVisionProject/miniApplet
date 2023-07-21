@@ -30,6 +30,22 @@ kgha_to_lbac <- function(x) {
   return(lbac)
 }
 
+# map function------------
+
+base_map <- function() {
+  leaflet() %>%
+    addTiles() %>%
+    addPolygons(data = states,
+                group = "state",
+                col = "blue",
+                layerId = ~state) %>%
+    addPolygons(data = counties,
+                group = "county",
+                col = "darkgreen") %>%
+    groupOptions("state", zoomLevels = 1:9) %>%
+    groupOptions("county", zoomLevels = 7:10) %>%
+    addProviderTiles("Esri.WorldTopoMap")
+}
 
 
 # determine response curve--------
