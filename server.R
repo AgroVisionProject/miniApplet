@@ -97,7 +97,6 @@ server <- function(input, output, session) {
     #shinyjs::enable("plot")
     
   })
-
   
   # data creation ---------------------------
   
@@ -362,13 +361,13 @@ output$values2 <- render_gt({
   observeEvent(input$reset, {
     # reset the map
     react_map(base_map())
-    output$plot2 <- NULL
-    output$sliderUI <- NULL
-    updateSelectizeInput(session = getDefaultReactiveDomain(), "simName", selected = character(0))
-    #shinyjs::disable("plot2")
-    #shinyjs::disable("sliderUI")
-    dat1 <- NULL
-    dat2 <- NULL
+    # selectedPoint(NULL)
+    # output$sliderUI <- NULL
+    # updateSelectizeInput(session = getDefaultReactiveDomain(), "simName", selected = character(0))
+    # #shinyjs::disable("plot2")
+    # #shinyjs::disable("sliderUI")
+    # dat1(NULL)
+    # dat2(NULL)
     
 
   })
