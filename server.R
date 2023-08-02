@@ -40,12 +40,9 @@ server <- function(input, output, session) {
     p <- input$map_shape_click # get input value
     if (is.null(p))  
       return()
-    #print(p)
     
     # zoom to state view
     if(p$group == "state") {
-      
-      #print(paste("state", p$id))
      
       leafletProxy("map") %>%
         setView(lat = p$lat, lng = p$lng, zoom = 7)
@@ -59,8 +56,6 @@ server <- function(input, output, session) {
     #zoom to county view with marker points
     if(p$group == "county") {
       
-      #print(p)
-      
       # county map with observation sites
       leafletProxy("map") %>%
         addCircleMarkers(data = stateSites$df,
@@ -72,19 +67,25 @@ server <- function(input, output, session) {
     
   })
   
+  # selected point----------------
+  #selectedPoint <- reactiveValues(lat = NULL, lon = NULL)
   selectedPoint <- reactiveVal()
   
   observeEvent(input$map_marker_click, {
     
-    #print("point selection")
+    print("selected point")
     
     click <- input$map_marker_click
     lat <- click$lat
+    print(lat)
     lon <- click$lng
+    print(lon)
     
     selectedPoint(
       list(lat = lat, lon = lon)
     )
+    #selectedPoint$lat <- lat
+    #selectedPoint$lon <- lon
 
     # zoom to site
     leafletProxy("map") %>%
@@ -92,61 +93,87 @@ server <- function(input, output, session) {
       clearGroup("sampleSite") %>%
       addMarkers(lng = lon, lat = lat, group = "sampleSite")
     
-    # show land management selection and plot button
-    shinyjs::enable("simName")
-    #shinyjs::enable("plot")
+  })
+  
+  # sim selection UI-------------------
+  
+  output$simSelectionUI <- renderUI({
+    
+    req(selectedPoint())
+    
+    tagList(
+      uiOutput("select1"),
+      br(),
+      uiOutput("select2")
+    )
     
   })
+  
+  output$select1 <- renderUI({
+    
+    radioButtons(inputId = "simSelect1",
+                 label = "Choose Cropping System",
+                 choices = simNames,
+                 selected = character(0))
+    
+  })
+  
+  output$select2 <- renderUI({
+    
+    req(input$simSelect1)
+    
+    sims2 <- sims %>%
+      filter(cropSystem != input$simSelect1)
+    
+    simNames2 <- sims2$cropSystem
+    
+    radioButtons(inputId = "simSelect2",
+                 label = "Choose Cropping System to Compare",
+                 choices = simNames2,
+                 selected = character(0))
+    
+  })
+  
+  
   
   # data creation ---------------------------
   
   ## data1----------------
   dat1 <- reactive({
     
-    req(selectedPoint())
-    req(input$simName)
+    #req(selectedPoint())
+    req(input$simSelect1)
+    print("inside dat 1")
     
     site_lat <- selectedPoint()$lat
     site_lon <- selectedPoint()$lon
-    simulation1 <- filter(sims, cropSystem == input$simName[1]) 
-    print('simulation1')
-    print(simulation1$simulation)
+    simulation1 <- filter(sims, cropSystem == input$simSelect1) 
 
-    
-    df <- makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon) %>%
+    makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon) %>%
       rename(yield1 = yield,
              leach1 = leaching)
     
-    print("dat1")
-    print(head(df))
-    df
- 
   })
   
   ## data2---------------------------
   dat2 <- reactive({
     
-    req(length(input$simName) == 2)
+    req(input$simSelect2)
     
     site_lat <- selectedPoint()$lat
     site_lon <- selectedPoint()$lon
-    simulation2 <- filter(sims, cropSystem == input$simName[2])
+    simulation2 <- filter(sims, cropSystem == input$simSelect2)
     
-    df <- makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon) %>%
+    makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon) %>%
       rename(yield2 = yield,
              leach2 = leaching)
-    
-    print("dat2")
-    print(head(df))
-    df
     
   })
   
   ## compareDat--------------------
   compareDat <- reactive({
     
-    req(length(input$simName) == 2)
-    print("inside compare")
+    req(input$simSelect2)
     df1 <- dat1()
     df2 <- dat2()
     
@@ -160,22 +187,19 @@ server <- function(input, output, session) {
     
   })
   
-  # plots--------------------------
+  # plot UI-------------------------
   
   output$plotUI <- renderUI({
 
-    req(input$simName)
-    print("inside render UI")
+    req(input$simSelect1)
 
     plot <- c()
-    if(length(input$simName) >= 1) {
-      print(length(input$simName))
-      print(input$simName)
-      print("plot1")
+    if(is.null(input$simSelect1) == FALSE) {
+      
       plot <- plotlyOutput('plot1')
+      
       }
-    if(length(input$simName) == 2) {
-      print("plot2")
+    if(is.null(input$simSelect2) == FALSE) {
 
       plot <- plotlyOutput('plot2')
 
@@ -185,12 +209,10 @@ server <- function(input, output, session) {
 
     })
 
-
+## plot 1--------------------
  output$plot1 <- renderPlotly({
-
+   
    req(dat1())
-   print('plot1')
-   print(head(dat1()))
 
    plot_ly(dat1(), x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
            type = 'scatter', mode = 'lines+markers',
@@ -213,33 +235,34 @@ server <- function(input, output, session) {
             legend = list(orientation = 'h', y = -0.2))
    })
 
+  ## plot 2--------------------------
  output$plot2 <- renderPlotly({
 
    req(compareDat())
-   sim1 <- input$simName[1]
-   sim2 <- input$simName[2]
+   sim1 <- input$simSelect1
+   sim2 <- input$simSelect2
 
-   plot_ly(compareDat(), x = ~fert10, y = ~ yield1, name = paste0(sim1, ": Yield (bu/ac)"),
+   plot_ly(compareDat(), x = ~fert10, y = ~ yield1, name = paste0(sim1, "yield (bu/ac)"),
            type = 'scatter', mode = 'lines+markers',
            line = list(color = "#5dbb63", width = 2),
            marker = list(symbol = "x", size = 10, color = "#5dbb63"),
-           hovertext = ~ paste("Yield 1:",round(yield1, 1), "bu/ac"),
+           hovertext = ~ paste(sim1, "yield:",round(yield1, 1), "bu/ac"),
            hoverinfo = "text") %>%
-     add_trace(y = ~ leach1, name = paste0(sim1, ": NO3 leaching (lb/ac)"),
+     add_trace(y = ~ leach1, name = paste0(sim1, "NO3 leaching (lb/ac)"),
                line = list(color = "#5dbb63", width = 2),
-               hovertext = ~paste("Nitrate leaching 1:",round(leach1, 1), "lbs/ac"),
+               hovertext = ~paste(sim1, "nitrate leaching:",round(leach1, 1), "lbs/ac"),
                marker = list(symbol = "circle", color = "#5dbb63"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                hoverinfo = "text") %>%
-     add_trace(y = ~ yield2, name = paste0(sim2, ": Yield (bu/ac)"),
+     add_trace(y = ~ yield2, name = paste0(sim2, "yield (bu/ac)"),
                line = list(color = "#c99f6e", width = 2),
-               hovertext = ~paste("Yield 2:",round(yield2, 1), "bu/ac"),
+               hovertext = ~paste(sim2, "yield:",round(yield2, 1), "bu/ac"),
                marker = list(symbol = "x", color = "#c99f6e"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                hoverinfo = "text") %>%
-     add_trace(y = ~ leach2, name = paste0(sim2, ": NO3 leaching (lb/ac)"),
+     add_trace(y = ~ leach2, name = paste0(sim2, "NO3 leaching (lb/ac)"),
                line = list(color = "#c99f6e", width = 2),
-               hovertext = ~paste("Nitrate leaching 2:",round(leach2, 1), "lbs/ac"),
+               hovertext = ~paste(sim2, "nitrate leaching:",round(leach2, 1), "lbs/ac"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                marker = list(symbol = "circle", color = "#c99f6e"),
                hoverinfo = "text") %>%
@@ -257,91 +280,71 @@ server <- function(input, output, session) {
 
  })
 
-    
-output$sliderUI <- renderUI({
-      
-  req(input$simName)
-  ui <- list()
-  if(length(input$simName) >= 1) {
-    # print(length(input$simName))
-    # print(input$simName)
-    ui <- list(
-      gt_output("values1"),
-      br(),
-      uiOutput("range")
-    )
-    if(length(input$simName) == 2)  {
-      print(length(input$simName))
-      print(input$simName)
-      ui <- list(gt_output("values1"),
-                 br(),
-                 gt_output("values2"),
-                 br(),
-                 uiOutput("range")
-      )
-    }
-  }
-  
-  ui
-      
-})
 
-output$range <- renderUI({
-    sliderInput(
-    inputId = "range_dat",
-    label = "N fertilizer (lb/ac)",
-    min = 0, max = 268, value = 100, step = 1
-  )
-})
+# slider UI--------------
+ 
+ output$range <- renderUI({
+   
+   req(input$simSelect1)
+   
+   sliderInput(
+     inputId = "range_dat",
+     label = "N fertilizer (lb/ac)",
+     min = 0, max = 268, value = 100, step = 1
+   )
+   
+ })
+ 
+ 
+  output$sliderUI <- renderUI({
+  
+    tagList(
+      uiOutput("values1"),
+      br(),
+      uiOutput("values2"),
+      br(),
+      gt_output("range")
+    )
+      
+  })
 
 
 output$values1 <- render_gt({
-    req(input$range_dat)
   
-    newdat1 <- dat1() %>%
-    filter(fert == input$range_dat) %>%
+  req(length(input$simSelect1) == 1)
+  req(input$range_dat)
+  
+  newdat1 <- dat1() %>%
+    filter(fert == input$range_dat) %>% 
     mutate(leaching = round(leach1, 1),
            yield = round(yield1, 1))
   
-    print('dat1gt')
-    print(head(newdat1))
+  # remove duplicates
+  newdat1 <- newdat1[1,]
 
-      # remove duplicates
-    newdat1 <- newdat1[1,]
-
-    newdat1 %>%
-      select(c(fert, yield, leaching)) %>%
-      gt() %>%
-      cols_label(
-        fert = "N fertilizer (lb/ac)",
-        yield = "Yield (bu/ac)",
-        leaching = "Nitrate leaching (lb/ac)"
-      ) %>%
-      tab_header(title = paste(input$simName[1], "output"))
-   })
+  newdat1 %>%
+    select(c(fert, yield, leaching)) %>%
+    gt() %>%
+    cols_label(
+      fert = "N fertilizer (lb/ac)",
+      yield = "Yield (bu/ac)",
+      leaching = "Nitrate leaching (lb/ac)"
+    ) %>%
+    tab_header(title = paste(input$simSelect1, "output"))
+  
+  })
     
-  # output$range2 <- renderUI({
-  #   
-  #     #req(dat2$df)
-  # 
-  #   sliderInput(
-  #     inputId = "range_dat2",
-  #     label = "N fertilizer (lb/ac)",
-  #     min = 0, max = 268, value = 100, step = 1
-  #   )
-  # })
 
-
-output$values2 <- render_gt({
+  output$values2 <- render_gt({
+    
+    req(length(input$simSelect2) == 1)
     req(input$range_dat)
-    #req(dat2$df)
+     
     newdat2 <- dat2() %>%
       filter(fert == input$range_dat) %>%
       mutate(leaching = round(leach2, 1),
-             yield = round(yield2, 1))
-    print('dat2gt')
-    print(head(newdat2))
-
+            yield = round(yield2, 1))
+  
     # remove duplicates
     newdat2 <- newdat2[1,]
 
@@ -353,16 +356,18 @@ output$values2 <- render_gt({
         yield = "Yield (bu/ac)",
         leaching = "Nitrate leaching (lb/ac)"
       ) %>%
-      tab_header(title = paste(input$simName[2], "output"))
-})
+      tab_header(title = paste(input$simSelect2, "output"))
+  })
 
 
   # reset vals---------------
   observeEvent(input$reset, {
     # reset the map
     react_map(base_map())
-    # selectedPoint(NULL)
-    # output$sliderUI <- NULL
+    #selectedPoint()
+    output$simSelectionUI <- NULL
+    output$sliderUI <- NULL
+    output$plotUI <- NULL
     # updateSelectizeInput(session = getDefaultReactiveDomain(), "simName", selected = character(0))
     # #shinyjs::disable("plot2")
     # #shinyjs::disable("sliderUI")
