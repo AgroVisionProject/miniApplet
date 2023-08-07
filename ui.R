@@ -22,7 +22,11 @@ ui <- fluidPage(
                  # disabled(radioButtons(inputId = "simName1",
                  #              label = "Choose cropping system",
                  #              choices = simNames)),
-                 uiOutput("simSelectionUI"),
+                 #conditionalPanel(
+                  # condition = "input$map_marker_click",
+                   uiOutput("simSelectionUI")
+                # )
+                 ,
                  #shinyjs::useShinyjs(),
                  # disabled(
                  #   actionButton("plot", "Draw plots")

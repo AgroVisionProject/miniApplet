@@ -69,7 +69,9 @@ server <- function(input, output, session) {
   
   # selected point----------------
   #selectedPoint <- reactiveValues(lat = NULL, lon = NULL)
+  #point <- reactiveVal()
   selectedPoint <- reactiveVal()
+  vals <- reactiveValues(count = 0)
   
   observeEvent(input$map_marker_click, {
     
@@ -82,10 +84,12 @@ server <- function(input, output, session) {
     print(lon)
     
     selectedPoint(
-      list(lat = lat, lon = lon)
+    list(lat = lat, lon = lon)
     )
-    #selectedPoint$lat <- lat
-    #selectedPoint$lon <- lon
+    # selectedPoint$lat <- lat
+    # selectedPoint$lon <- lon
+    
+    vals$count <- vals$count + 1
 
     # zoom to site
     leafletProxy("map") %>%
@@ -98,15 +102,20 @@ server <- function(input, output, session) {
   # sim selection UI-------------------
   
   output$simSelectionUI <- renderUI({
-    
-    req(selectedPoint())
-    
+
+    #req(selectedPoint()$lat)
+    #req(selectedPoint())
+    #req(input$map_marker_click)
+    req(vals$count >= 1)
+
+    print("inside render selection")
+
     tagList(
       uiOutput("select1"),
       br(),
       uiOutput("select2")
     )
-    
+
   })
   
   output$select1 <- renderUI({
@@ -147,6 +156,7 @@ server <- function(input, output, session) {
     
     site_lat <- selectedPoint()$lat
     site_lon <- selectedPoint()$lon
+    print(site_lat)
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
 
     makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon) %>%
@@ -158,6 +168,7 @@ server <- function(input, output, session) {
   ## data2---------------------------
   dat2 <- reactive({
     
+    #req(selectedPoint())
     req(input$simSelect2)
     
     site_lat <- selectedPoint()$lat
@@ -192,6 +203,8 @@ server <- function(input, output, session) {
   output$plotUI <- renderUI({
 
     req(input$simSelect1)
+    #req(dat1())
+    req(vals$count >= 1)
 
     plot <- c()
     if(is.null(input$simSelect1) == FALSE) {
@@ -212,7 +225,7 @@ server <- function(input, output, session) {
 ## plot 1--------------------
  output$plot1 <- renderPlotly({
    
-   req(dat1())
+   #req(input$simSelect1)
 
    plot_ly(dat1(), x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
            type = 'scatter', mode = 'lines+markers',
@@ -238,7 +251,7 @@ server <- function(input, output, session) {
   ## plot 2--------------------------
  output$plot2 <- renderPlotly({
 
-   req(compareDat())
+   #req(input$simSelect2)
    sim1 <- input$simSelect1
    sim2 <- input$simSelect2
 
@@ -285,8 +298,6 @@ server <- function(input, output, session) {
  
  output$range <- renderUI({
    
-   req(input$simSelect1)
-   
    sliderInput(
      inputId = "range_dat",
      label = "N fertilizer (lb/ac)",
@@ -297,6 +308,9 @@ server <- function(input, output, session) {
  
  
   output$sliderUI <- renderUI({
+    
+    req(vals$count >= 1)
+    req(input$simSelect1)
   
     tagList(
       uiOutput("values1"),
@@ -311,8 +325,9 @@ server <- function(input, output, session) {
 
 output$values1 <- render_gt({
   
-  req(length(input$simSelect1) == 1)
+  #req(length(input$simSelect1) == 1)
   req(input$range_dat)
+  #req(dat1())
   
   newdat1 <- dat1() %>%
     filter(fert == input$range_dat) %>% 
@@ -337,8 +352,9 @@ output$values1 <- render_gt({
 
   output$values2 <- render_gt({
     
-    req(length(input$simSelect2) == 1)
+    #req(length(input$simSelect2) == 1)
     req(input$range_dat)
+    #req(dat2())
      
     newdat2 <- dat2() %>%
       filter(fert == input$range_dat) %>%
@@ -364,17 +380,13 @@ output$values1 <- render_gt({
   observeEvent(input$reset, {
     # reset the map
     react_map(base_map())
-    #selectedPoint()
-    output$simSelectionUI <- NULL
-    output$sliderUI <- NULL
-    output$plotUI <- NULL
-    # updateSelectizeInput(session = getDefaultReactiveDomain(), "simName", selected = character(0))
-    # #shinyjs::disable("plot2")
-    # #shinyjs::disable("sliderUI")
-    # dat1(NULL)
-    # dat2(NULL)
+    vals$count = 0
+    # resets the points
+    selectedPoint()
+    dat1()
+    dat2()
+    compareDat()
     
-
   })
 
  }
