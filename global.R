@@ -80,7 +80,7 @@ responseCurve <- function(dataframe, fun) {
 
 # make data frame----------------------
 
-makeDF <- function(simulation, site_lat, site_lon) {
+makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   
   req(is.na(simulation) == FALSE)
   #print("inside function")
@@ -107,8 +107,19 @@ makeDF <- function(simulation, site_lat, site_lon) {
 
   yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
   leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
+  
+  #econDF$cornVal <- econDF$yield1 * input$cornPrice
+  #econDF$fertCost <- econDF$fert * input$fertPrice
+  #econDF$net <- econDF$cornVal - econDF$fertCost
+  
+  cornVal <- (yield_y - yield_y[1]) * cornPrice
+  fertCost <- round(kgha_to_lbac(fert)) * fertPrice
+  NUE <- 0.5
+  nloss <- NUE * leach_y * fertPrice
+  net <- cornVal - fertCost - nloss
 
-  data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y))
+  data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y),
+             net = net)
   
 }
 

@@ -156,12 +156,21 @@ server <- function(input, output, session) {
     
     site_lat <- selectedPoint()$lat
     site_lon <- selectedPoint()$lon
+    cornPrice <- input$cornPrice
+    fertPrice <- input$fertPrice
     print(site_lat)
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
 
-    makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon) %>%
+    dat <- makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
+                  cornPrice = cornPrice, fertPrice = fertPrice) %>%
       rename(yield1 = yield,
-             leach1 = leaching)
+             leach1 = leaching,
+             net1 = net)
+    
+    print("dat1")
+    print(head(dat))
+    
+    dat
     
   })
   
@@ -173,11 +182,15 @@ server <- function(input, output, session) {
     
     site_lat <- selectedPoint()$lat
     site_lon <- selectedPoint()$lon
+    cornPrice <- input$cornPrice
+    fertPrice <- input$fertPrice
     simulation2 <- filter(sims, cropSystem == input$simSelect2)
     
-    makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon) %>%
+    makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon,
+           cornPrice = cornPrice, fertPrice = fertPrice) %>%
       rename(yield2 = yield,
-             leach2 = leaching)
+             leach2 = leaching,
+             net2 = net)
     
   })
   
@@ -197,6 +210,33 @@ server <- function(input, output, session) {
     compareDat_fert10
     
   })
+  
+  # econ plot UI --------------------
+  
+  # output$econPlotUI <- renderUI({
+  #   
+  #   req(vals$count >= 1)
+  #   req(dat1())
+  #   
+  #   econDF <- dat1()
+  #   econDF$cornVal <- econDF$yield1 * input$cornPrice
+  #   econDF$fertCost <- econDF$fert * input$fertPrice
+  #   econDF$net <- econDF$cornVal - econDF$fertCost
+  #   print("econDF")
+  #   print(head(econDF))
+  #   
+  #   renderPlot({
+  #     
+  #   ggplot(data = econDF) +
+  #       geom_point(aes(x = fert, y = yield1), color = "#5dbb63") +
+  #       geom_point(aes(x = fert, y = net), color = "darkgreen") +
+  #       geom_point(aes(x = fert, y = leach1), color = "#c99f6e")
+  #     
+  #   })
+  #   
+  # })
+  
+  
   
   # plot UI-------------------------
   
@@ -230,11 +270,18 @@ server <- function(input, output, session) {
    plot_ly(dat1(), x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
            type = 'scatter', mode = 'lines+markers',
            line = list(color = "#5dbb63", width = 1),
+           marker = list(size = 10, color = "#5dbb63"),
            hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
            hoverinfo = "text") %>%
      add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
                line = list(color = "#c99f6e", width = 1),
+               marker = list(color = "#c99f6e"),
                hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
+               hoverinfo = "text") %>%
+     add_trace(y = ~ net1, name = "Net profits ($/ac)",
+               line = list(color = "black", width = 1),
+               marker = list(color = "black"),
+               hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
                hoverinfo = "text") %>%
      add_trace(y = 0,
                opacity = 0,
@@ -255,29 +302,39 @@ server <- function(input, output, session) {
    sim1 <- input$simSelect1
    sim2 <- input$simSelect2
 
-   plot_ly(compareDat(), x = ~fert10, y = ~ yield1, name = paste0(sim1, "yield (bu/ac)"),
+   plot_ly(compareDat(), x = ~fert10, y = ~ yield1, name = paste(sim1, "yield (bu/ac)"),
            type = 'scatter', mode = 'lines+markers',
            line = list(color = "#5dbb63", width = 2),
            marker = list(symbol = "x", size = 10, color = "#5dbb63"),
            hovertext = ~ paste(sim1, "yield:",round(yield1, 1), "bu/ac"),
            hoverinfo = "text") %>%
-     add_trace(y = ~ leach1, name = paste0(sim1, "NO3 leaching (lb/ac)"),
+     add_trace(y = ~ leach1, name = paste(sim1, "NO3 leaching (lb/ac)"),
                line = list(color = "#5dbb63", width = 2),
                hovertext = ~paste(sim1, "nitrate leaching:",round(leach1, 1), "lbs/ac"),
                marker = list(symbol = "circle", color = "#5dbb63"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                hoverinfo = "text") %>%
-     add_trace(y = ~ yield2, name = paste0(sim2, "yield (bu/ac)"),
+     add_trace(y = ~ net1, name = paste(sim1, "return to N ($/ac)"),
+               line = list(color = "#5dbb63", width = 1),
+               marker = list(symbol = "circle-open", color = "#5dbb63"),
+               hovertext = ~ paste(sim1, "return to N:", round(net1, 1), "$/ac"),
+               hoverinfo = "text") %>%
+     add_trace(y = ~ yield2, name = paste(sim2, "yield (bu/ac)"),
                line = list(color = "#c99f6e", width = 2),
                hovertext = ~paste(sim2, "yield:",round(yield2, 1), "bu/ac"),
                marker = list(symbol = "x", color = "#c99f6e"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                hoverinfo = "text") %>%
-     add_trace(y = ~ leach2, name = paste0(sim2, "NO3 leaching (lb/ac)"),
+     add_trace(y = ~ leach2, name = paste(sim2, "NO3 leaching (lb/ac)"),
                line = list(color = "#c99f6e", width = 2),
                hovertext = ~paste(sim2, "nitrate leaching:",round(leach2, 1), "lbs/ac"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                marker = list(symbol = "circle", color = "#c99f6e"),
+               hoverinfo = "text") %>%
+     add_trace(y = ~ net2, name = paste(sim2, "return to N ($/ac)"),
+               line = list(color = "#c99f6e", width = 1),
+               marker = list(symbol = "circle-open", color = "#c99f6e"),
+               hovertext = ~ paste(sim2, "return to N:", round(net2, 1), "$/ac"),
                hoverinfo = "text") %>%
      add_trace(y = 0,
                opacity = 0,

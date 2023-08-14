@@ -13,30 +13,19 @@ ui <- fluidPage(
                  br(),
                  actionButton("reset", "Clear locations"),
                  hr(),
-                 #tags$h4("Next, select up to 2 land management scenario and draw plots."),
-                 # disabled(selectizeInput(inputId = "simName",
-                 #                         label = "Cropping systems",
-                 #                         multiple = TRUE,
-                 #                         options = list(maxItems = 2),
-                 #                         choices = simNames)),
-                 # disabled(radioButtons(inputId = "simName1",
-                 #              label = "Choose cropping system",
-                 #              choices = simNames)),
-                 #conditionalPanel(
-                  # condition = "input$map_marker_click",
-                   uiOutput("simSelectionUI")
-                # )
-                 ,
-                 #shinyjs::useShinyjs(),
-                 # disabled(
-                 #   actionButton("plot", "Draw plots")
-                 # ),
+                 uiOutput("simSelectionUI"),
                  uiOutput("sliderUI")),
     mainPanel(leafletOutput("map"),
               br(),
-              #plotlyOutput("plot1")
-              #plotlyOutput("plot2")
+              fluidRow(column(6,
+                              numericInput("cornPrice", "Price of corn ($/bu)", value = 5)
+                              ),
+                       column(6, 
+                              numericInput("fertPrice", "Price of N fertilizer ($/lb)", value = 1))),
+              br(),
+              #uiOutput("econPlotUI"),
               uiOutput("plotUI")
+              
               
   )
   )
