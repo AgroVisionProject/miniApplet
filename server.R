@@ -158,19 +158,18 @@ server <- function(input, output, session) {
     site_lon <- selectedPoint()$lon
     cornPrice <- input$cornPrice
     fertPrice <- input$fertPrice
+    NUE <- input$NUE
+    cornTech <- input$cornImp
+    fertEff <- input$fertImp
     print(site_lat)
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
 
-    dat <- makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
-                  cornPrice = cornPrice, fertPrice = fertPrice) %>%
+    makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
+                  cornPrice = cornPrice, fertPrice = fertPrice, NUE = NUE,
+                  cornTech = cornTech, fertEff = fertEff) %>%
       rename(yield1 = yield,
              leach1 = leaching,
              net1 = net)
-    
-    print("dat1")
-    print(head(dat))
-    
-    dat
     
   })
   
@@ -184,13 +183,17 @@ server <- function(input, output, session) {
     site_lon <- selectedPoint()$lon
     cornPrice <- input$cornPrice
     fertPrice <- input$fertPrice
+    NUE <- input$NUE
+    cornTech <- input$cornImp
+    fertEff <- input$fertImp
     simulation2 <- filter(sims, cropSystem == input$simSelect2)
     
-    makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon,
-           cornPrice = cornPrice, fertPrice = fertPrice) %>%
-      rename(yield2 = yield,
-             leach2 = leaching,
-             net2 = net)
+   makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon,
+           cornPrice = cornPrice, fertPrice = fertPrice,  NUE = NUE,
+           cornTech = cornTech, fertEff = fertEff) %>%
+       rename(yield2 = yield,
+              leach2 = leaching,
+              net2 = net)
     
   })
   
@@ -389,18 +392,20 @@ output$values1 <- render_gt({
   newdat1 <- dat1() %>%
     filter(fert == input$range_dat) %>% 
     mutate(leaching = round(leach1, 1),
-           yield = round(yield1, 1))
+           yield = round(yield1, 1),
+           net = round(net1, 1))
   
   # remove duplicates
   newdat1 <- newdat1[1,]
 
   newdat1 %>%
-    select(c(fert, yield, leaching)) %>%
+    select(c(fert, yield, leaching, net)) %>%
     gt() %>%
     cols_label(
       fert = "N fertilizer (lb/ac)",
       yield = "Yield (bu/ac)",
-      leaching = "Nitrate leaching (lb/ac)"
+      leaching = "Nitrate leaching (lb/ac)",
+      net = "RTN ($/ac)"
     ) %>%
     tab_header(title = paste(input$simSelect1, "output"))
   
@@ -416,18 +421,20 @@ output$values1 <- render_gt({
     newdat2 <- dat2() %>%
       filter(fert == input$range_dat) %>%
       mutate(leaching = round(leach2, 1),
-            yield = round(yield2, 1))
+            yield = round(yield2, 1),
+            net = round(net2, 1))
   
     # remove duplicates
     newdat2 <- newdat2[1,]
 
     newdat2 %>%
-      select(c(fert, yield, leaching)) %>%
+      select(c(fert, yield, leaching, net)) %>%
       gt() %>%
       cols_label(
         fert = "N fertilizer (lb/ac)",
         yield = "Yield (bu/ac)",
-        leaching = "Nitrate leaching (lb/ac)"
+        leaching = "Nitrate leaching (lb/ac)",
+        net = "RTN ($/ac)"
       ) %>%
       tab_header(title = paste(input$simSelect2, "output"))
   })

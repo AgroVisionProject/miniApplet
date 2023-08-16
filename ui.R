@@ -21,7 +21,18 @@ ui <- fluidPage(
                               numericInput("cornPrice", "Price of corn ($/bu)", value = 5)
                               ),
                        column(6, 
-                              numericInput("fertPrice", "Price of N fertilizer ($/lb)", value = 1))),
+                              numericInput("fertPrice", "Price of N fertilizer ($/lb)", value = 1)
+                              )),
+              p("Assumptions"),
+              fluidRow(column(4,
+                              numericInput("cornImp", "Corn Yield Improvements", value = 1)
+                              ),
+                       column(4, 
+                              numericInput("fertImp", "Nitrogen improvements", value = 1)
+                              ),
+                       column(4,
+                              numericInput("NUE", "Nitrogen Use Efficiency", value = 0.5)
+                              )),
               br(),
               #uiOutput("econPlotUI"),
               uiOutput("plotUI")
