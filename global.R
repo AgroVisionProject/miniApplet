@@ -80,7 +80,8 @@ responseCurve <- function(dataframe, fun) {
 
 # make data frame----------------------
 
-makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, cornTech, fertEff) {
+makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
+#makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, cornTech, fertEff) {
   
   req(is.na(simulation) == FALSE)
   
@@ -99,18 +100,20 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, co
 
   yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
   # corn yield improvements
-  yield_new <- yield_y * cornTech
+  #yield_new <- yield_y * cornTech
   leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
   # nitrogen use improvements
-  leach_new <- leach_y * fertEff
+  #leach_new <- leach_y * fertEff
 
   cornVal <- (yield_y - yield_y[1]) * cornPrice
   fertCost <- round(kgha_to_lbac(fert)) * fertPrice
-  NUE <- NUE
+  NUE <- 0.5
   nloss <- NUE * leach_y * fertPrice
   net <- cornVal - fertCost - nloss
 
-  data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_new, leaching = kgha_to_lbac(leach_new),
+  # data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_new, leaching = kgha_to_lbac(leach_new),
+  #            net = net)
+  data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y),
              net = net)
   
 }

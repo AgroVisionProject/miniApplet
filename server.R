@@ -123,7 +123,7 @@ server <- function(input, output, session) {
     radioButtons(inputId = "simSelect1",
                  label = "Choose Cropping System",
                  choices = simNames,
-                 selected = character(0))
+                 selected = "Rainfed continuous corn")
     
   })
   
@@ -138,11 +138,26 @@ server <- function(input, output, session) {
     
     radioButtons(inputId = "simSelect2",
                  label = "Choose Cropping System to Compare",
-                 choices = simNames2,
-                 selected = character(0))
+                 choices = c("None", simNames2),
+                 selected = "None")
     
   })
   
+  
+  # prices UI--------------------
+  
+  output$pricesUI <- renderUI({
+    
+    req(vals$count >= 1)
+    
+    fluidRow(column(6,
+                    numericInput("cornPrice", "Price of corn ($/bu)", value = 5, min = 1, max = 20)
+                    ),
+             column(6,
+                    numericInput("fertPrice", "Price of N fertilizer ($/lb)", value = 1, min = 0, max = 20)
+                    ))
+    
+  })
   
   
   # data creation ---------------------------
@@ -152,21 +167,22 @@ server <- function(input, output, session) {
     
     #req(selectedPoint())
     req(input$simSelect1)
-    print("inside dat 1")
+    #print("inside dat 1")
     
     site_lat <- selectedPoint()$lat
     site_lon <- selectedPoint()$lon
     cornPrice <- input$cornPrice
     fertPrice <- input$fertPrice
-    NUE <- input$NUE
-    cornTech <- input$cornImp
-    fertEff <- input$fertImp
-    print(site_lat)
+    # NUE <- input$NUE
+    # cornTech <- input$cornImp
+    # fertEff <- input$fertImp
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
-
+    
     makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
-                  cornPrice = cornPrice, fertPrice = fertPrice, NUE = NUE,
-                  cornTech = cornTech, fertEff = fertEff) %>%
+           cornPrice = cornPrice, fertPrice = fertPrice) %>%
+    # makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
+    #               cornPrice = cornPrice, fertPrice = fertPrice, NUE = NUE,
+    #               cornTech = cornTech, fertEff = fertEff) %>%
       rename(yield1 = yield,
              leach1 = leaching,
              net1 = net)
@@ -183,14 +199,16 @@ server <- function(input, output, session) {
     site_lon <- selectedPoint()$lon
     cornPrice <- input$cornPrice
     fertPrice <- input$fertPrice
-    NUE <- input$NUE
-    cornTech <- input$cornImp
-    fertEff <- input$fertImp
+    #NUE <- input$NUE
+    #cornTech <- input$cornImp
+    #fertEff <- input$fertImp
     simulation2 <- filter(sims, cropSystem == input$simSelect2)
     
-   makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon,
-           cornPrice = cornPrice, fertPrice = fertPrice,  NUE = NUE,
-           cornTech = cornTech, fertEff = fertEff) %>%
+    makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon,
+           cornPrice = cornPrice, fertPrice = fertPrice) %>%
+   # makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon,
+   #         cornPrice = cornPrice, fertPrice = fertPrice,  NUE = NUE,
+   #         cornTech = cornTech, fertEff = fertEff) %>%
        rename(yield2 = yield,
               leach2 = leaching,
               net2 = net)
@@ -214,32 +232,6 @@ server <- function(input, output, session) {
     
   })
   
-  # econ plot UI --------------------
-  
-  # output$econPlotUI <- renderUI({
-  #   
-  #   req(vals$count >= 1)
-  #   req(dat1())
-  #   
-  #   econDF <- dat1()
-  #   econDF$cornVal <- econDF$yield1 * input$cornPrice
-  #   econDF$fertCost <- econDF$fert * input$fertPrice
-  #   econDF$net <- econDF$cornVal - econDF$fertCost
-  #   print("econDF")
-  #   print(head(econDF))
-  #   
-  #   renderPlot({
-  #     
-  #   ggplot(data = econDF) +
-  #       geom_point(aes(x = fert, y = yield1), color = "#5dbb63") +
-  #       geom_point(aes(x = fert, y = net), color = "darkgreen") +
-  #       geom_point(aes(x = fert, y = leach1), color = "#c99f6e")
-  #     
-  #   })
-  #   
-  # })
-  
-  
   
   # plot UI-------------------------
   
@@ -250,12 +242,12 @@ server <- function(input, output, session) {
     req(vals$count >= 1)
 
     plot <- c()
-    if(is.null(input$simSelect1) == FALSE) {
+    if(input$simSelect2 == "None") {
       
       plot <- plotlyOutput('plot1')
       
       }
-    if(is.null(input$simSelect2) == FALSE) {
+    if(input$simSelect2 != "None") {
 
       plot <- plotlyOutput('plot2')
 
@@ -267,35 +259,92 @@ server <- function(input, output, session) {
 
 ## plot 1--------------------
  output$plot1 <- renderPlotly({
-   
-   #req(input$simSelect1)
 
+   req(dat1())
+   #p <- ggplot(dat1(), aes(x = fert))
+   #ggplotly(p)
+   #plot_ly(type = "scatter", mode = "markers") %>%
    plot_ly(dat1(), x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
            type = 'scatter', mode = 'lines+markers',
            line = list(color = "#5dbb63", width = 1),
            marker = list(size = 10, color = "#5dbb63"),
            hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
-           hoverinfo = "text") %>%
-     add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
-               line = list(color = "#c99f6e", width = 1),
-               marker = list(color = "#c99f6e"),
-               hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
-               hoverinfo = "text") %>%
-     add_trace(y = ~ net1, name = "Net profits ($/ac)",
-               line = list(color = "black", width = 1),
-               marker = list(color = "black"),
-               hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
-               hoverinfo = "text") %>%
+           hoverinfo = "text"
+          ) %>%
+   #   add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
+   #             line = list(color = "#c99f6e", width = 1),
+   #             marker = list(color = "#c99f6e"),
+   #             hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
+   #             hoverinfo = "text") %>%
+   #   add_trace(y = ~ net1, name = "Return to N ($/ac)",
+   #             line = list(color = "black", width = 1),
+   #             marker = list(color = "black"),
+   #             hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
+   #             hoverinfo = "text") %>%
      add_trace(y = 0,
                opacity = 0,
                hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
                hoverinfo = "text",
                showlegend = F) %>%
-     layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
+     layout(title = "Responses to fertilizer N",
             xaxis = list(title = "N fertilizer (N lb/ac)"),
             yaxis = list (title = " "),
             hovermode = "x unified",
             legend = list(orientation = 'h', y = -0.2))
+   })
+  
+  ### reactive plot 1--------------------
+  
+  observeEvent(input$vars, {
+    
+    req(dat1())
+
+    #print(input$vars)
+    vars = c(input$vars)
+    print(vars)
+    if("Yield" %in% vars) {
+      print("yield")
+      #print(dat1()$yield1)
+      plotlyProxy("plot1", session) %>%
+        plotlyProxyInvoke(method = "addTraces", list(x = dat1()$fert, y = dat1()$yield1,
+                                                    name = "Yield (bu/ac)",type = 'scatter', mode = 'lines+markers',
+                                                    line = list(color = "#5dbb63", width = 1),
+                                                    marker = list(size = 8, color = "#5dbb63"),
+                                                    hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
+                                                    hoverinfo = "text"))
+    } #else {
+      
+    #   plotlyProxy("plot1", session) %>%
+    #     plotlyProxyInvoke(method = "deleteTraces", list(y = dat1()$yield1))
+    # }
+    if("Nitrate leaching" %in% vars) {
+      print("fert")
+      #print(dat1()$leach1)
+      plotlyProxy("plot1", session) %>%
+        plotlyProxyInvoke(method = "addTraces", list(x = dat1()$fert, y = dat1()$leach1,
+                                                     name = "Nitrate leaching (lb/ac)",type = 'scatter', mode = 'lines+markers',
+                                                     line = list(color = "#c99f6e", width = 1),
+                                                     marker = list(size = 8, color = "#c99f6e"),
+                                                     hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
+                                                     hoverinfo = "text"))
+    } #else {
+    #   plotlyProxy("plot1", session) %>%
+    #     plotlyProxyInvoke(method = "deleteTraces", list(x = dat1()$fert, y = dat1()$leach1))
+    # }
+    if("Return to N" %in% vars) {
+      print("RTN")
+      plotlyProxy("plot1", session) %>%
+        plotlyProxyInvoke(method = "addTraces", list(x = dat1()$fert, y = dat1()$net1,
+                                                     name = "Return to N ($/ac)",type = 'scatter', mode = 'lines+markers',
+                                                     line = list(color = "black", width = 1),
+                                                     marker = list(size = 8, color = "black"),
+                                                     hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
+                                                     hoverinfo = "text"))
+    } #else {
+    #   plotlyProxy("plot1", session) %>%
+    #     plotlyProxyInvoke(method = "deleteTraces", list(x = dat1()$fert, y = dat1()$net1))
+    # }
+
    })
 
   ## plot 2--------------------------
@@ -353,8 +402,24 @@ server <- function(input, output, session) {
 
  })
 
+# variable selection UI------------------
+  
+  output$varSelectionUI <- renderUI({
+    
+    #req(input$simSelect1)
+    req(vals$count >= 1)
+    
+    selectInput(
+      inputId = "vars",
+      label = "Add variables for display on graph", 
+      choices = c("Yield", "Nitrate leaching", "Return to N"),
+      selected = "Yield",
+      multiple = TRUE)
+    
+  })
 
-# slider UI--------------
+  
+  # slider UI--------------
  
  output$range <- renderUI({
    
@@ -377,6 +442,7 @@ server <- function(input, output, session) {
       br(),
       uiOutput("values2"),
       br(),
+      p("Use the slider to view responses at specific N rates in the table"),
       gt_output("range")
     )
       
