@@ -8,6 +8,7 @@ library(gt)
 library(reactlog)
 library(shinyjs)
 
+
 reactlog_enable()
 
 # load shapefiles
@@ -118,4 +119,57 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   
 }
 
+# test data set----------------
 
+# row = sample(nrow(yield_df), 1)
+# yield_df_sum = yield_df[row,]
+# leach_df_sum = leach_df[row,]
+# 
+# yieldFun <- yield_df_sum$fun
+# leachFun <- leach_df_sum$fun
+# 
+# yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
+# leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
+# 
+# cornPrice = 5
+# fertPrice = 1.1
+# cornVal <- (yield_y - yield_y[1]) * cornPrice
+# fertCost <- round(kgha_to_lbac(fert)) * fertPrice
+# NUE <- 0.5
+# nloss <- NUE * leach_y * fertPrice
+# net <- cornVal - fertCost - nloss
+# 
+# testdf <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y),
+#            net = net)
+# 
+# 
+# p <- plot_ly(testdf, x = ~fert, y = ~ yield, name = "Yield (bu/ac)",
+#              type = 'scatter', mode = 'lines+markers',
+#              line = list(color = "#5dbb63", width = 1),
+#              marker = list(size = 10, color = "#5dbb63"),
+#              hovertext = ~ paste("Yield:", round(yield, 1), "bu/ac"),
+#              hoverinfo = "text"
+# ) %>%
+#   add_trace(y = ~ leaching, name = "Nitrate leaching (lb/ac)",
+#             line = list(color = "#c99f6e", width = 1),
+#             marker = list(color = "#c99f6e"),
+#             hovertext = ~ paste("Nitrate leaching:", round(leaching, 1), "lbs/ac"),
+#             hoverinfo = "text") %>%
+#   add_trace(y = ~ net, name = "Return to N ($/ac)",
+#             line = list(color = "black", width = 1),
+#             marker = list(color = "black"),
+#             hovertext = ~ paste("Return to N:", round(net, 1), "$/ac"),
+#             hoverinfo = "text") %>%
+#   add_trace(y = 0,
+#             opacity = 0,
+#             hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
+#             hoverinfo = "text",
+#             showlegend = F) %>%
+#   layout(title = "Responses to fertilizer N",
+#          xaxis = list(title = "N fertilizer (N lb/ac)"),
+#          yaxis = list (title = " "),
+#          hovermode = "x unified",
+#          legend = list(orientation = 'h', y = -0.2))
+# 
+# p
+# p %>% onRender(js)

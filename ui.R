@@ -15,7 +15,7 @@ ui <- fluidPage(
                  hr(),
                  uiOutput("simSelectionUI"),
                  uiOutput("pricesUI"),
-                 uiOutput("varSelectionUI")),
+                 uiOutput("sliderUI")),
     mainPanel(leafletOutput("map"),
               br(),
               # fluidRow(column(6,
@@ -37,8 +37,8 @@ ui <- fluidPage(
               br(),
               #uiOutput("econPlotUI"),
               uiOutput("plotUI"),
-              br(),
-              uiOutput("sliderUI")
+              # br(),
+              # helpText("Click on legend items to add or remove variables from plot")
               
   )
   )

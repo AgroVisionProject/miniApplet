@@ -167,6 +167,8 @@ server <- function(input, output, session) {
     
     #req(selectedPoint())
     req(input$simSelect1)
+    req(input$cornPrice)
+    req(input$fertPrice)
     #print("inside dat 1")
     
     site_lat <- selectedPoint()$lat
@@ -240,6 +242,7 @@ server <- function(input, output, session) {
     req(input$simSelect1)
     #req(dat1())
     req(vals$count >= 1)
+    req(input$simSelect2)
 
     plot <- c()
     if(input$simSelect2 == "None") {
@@ -253,7 +256,10 @@ server <- function(input, output, session) {
 
       }
 
-    plot
+    tagList(
+      plot,
+      helpText("Click on legend items to add or remove variables from plot")
+    )
 
     })
 
@@ -264,6 +270,7 @@ server <- function(input, output, session) {
    #p <- ggplot(dat1(), aes(x = fert))
    #ggplotly(p)
    #plot_ly(type = "scatter", mode = "markers") %>%
+   
    plot_ly(dat1(), x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
            type = 'scatter', mode = 'lines+markers',
            line = list(color = "#5dbb63", width = 1),
@@ -271,16 +278,16 @@ server <- function(input, output, session) {
            hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
            hoverinfo = "text"
           ) %>%
-   #   add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
-   #             line = list(color = "#c99f6e", width = 1),
-   #             marker = list(color = "#c99f6e"),
-   #             hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
-   #             hoverinfo = "text") %>%
-   #   add_trace(y = ~ net1, name = "Return to N ($/ac)",
-   #             line = list(color = "black", width = 1),
-   #             marker = list(color = "black"),
-   #             hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
-   #             hoverinfo = "text") %>%
+     add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
+               line = list(color = "#c99f6e", width = 1),
+               marker = list(color = "#c99f6e"),
+               hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
+               hoverinfo = "text") %>%
+     add_trace(y = ~ net1, name = "Return to N ($/ac)",
+               line = list(color = "black", width = 1),
+               marker = list(color = "black"),
+               hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
+               hoverinfo = "text") %>%
      add_trace(y = 0,
                opacity = 0,
                hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
@@ -291,61 +298,9 @@ server <- function(input, output, session) {
             yaxis = list (title = " "),
             hovermode = "x unified",
             legend = list(orientation = 'h', y = -0.2))
+   
    })
   
-  ### reactive plot 1--------------------
-  
-  observeEvent(input$vars, {
-    
-    req(dat1())
-
-    #print(input$vars)
-    vars = c(input$vars)
-    print(vars)
-    if("Yield" %in% vars) {
-      print("yield")
-      #print(dat1()$yield1)
-      plotlyProxy("plot1", session) %>%
-        plotlyProxyInvoke(method = "addTraces", list(x = dat1()$fert, y = dat1()$yield1,
-                                                    name = "Yield (bu/ac)",type = 'scatter', mode = 'lines+markers',
-                                                    line = list(color = "#5dbb63", width = 1),
-                                                    marker = list(size = 8, color = "#5dbb63"),
-                                                    hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
-                                                    hoverinfo = "text"))
-    } #else {
-      
-    #   plotlyProxy("plot1", session) %>%
-    #     plotlyProxyInvoke(method = "deleteTraces", list(y = dat1()$yield1))
-    # }
-    if("Nitrate leaching" %in% vars) {
-      print("fert")
-      #print(dat1()$leach1)
-      plotlyProxy("plot1", session) %>%
-        plotlyProxyInvoke(method = "addTraces", list(x = dat1()$fert, y = dat1()$leach1,
-                                                     name = "Nitrate leaching (lb/ac)",type = 'scatter', mode = 'lines+markers',
-                                                     line = list(color = "#c99f6e", width = 1),
-                                                     marker = list(size = 8, color = "#c99f6e"),
-                                                     hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
-                                                     hoverinfo = "text"))
-    } #else {
-    #   plotlyProxy("plot1", session) %>%
-    #     plotlyProxyInvoke(method = "deleteTraces", list(x = dat1()$fert, y = dat1()$leach1))
-    # }
-    if("Return to N" %in% vars) {
-      print("RTN")
-      plotlyProxy("plot1", session) %>%
-        plotlyProxyInvoke(method = "addTraces", list(x = dat1()$fert, y = dat1()$net1,
-                                                     name = "Return to N ($/ac)",type = 'scatter', mode = 'lines+markers',
-                                                     line = list(color = "black", width = 1),
-                                                     marker = list(size = 8, color = "black"),
-                                                     hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
-                                                     hoverinfo = "text"))
-    } #else {
-    #   plotlyProxy("plot1", session) %>%
-    #     plotlyProxyInvoke(method = "deleteTraces", list(x = dat1()$fert, y = dat1()$net1))
-    # }
-
-   })
 
   ## plot 2--------------------------
  output$plot2 <- renderPlotly({
@@ -393,7 +348,7 @@ server <- function(input, output, session) {
                hovertext = ~ paste("N fert rate:",fert10, "lbs N/ac"),
                hoverinfo = "text",
                showlegend = F) %>%
-     layout(title = "Corn yield and nitrate leaching response \n to N fertilizer \n",
+     layout(title = "Responses to fertilizer N",
             xaxis = list(title = "N fertilizer (N lb/ac)"),
             yaxis = list (title = " "),
             hovermode = "x unified",
@@ -401,22 +356,6 @@ server <- function(input, output, session) {
                           y = -0.3))
 
  })
-
-# variable selection UI------------------
-  
-  output$varSelectionUI <- renderUI({
-    
-    #req(input$simSelect1)
-    req(vals$count >= 1)
-    
-    selectInput(
-      inputId = "vars",
-      label = "Add variables for display on graph", 
-      choices = c("Yield", "Nitrate leaching", "Return to N"),
-      selected = "Yield",
-      multiple = TRUE)
-    
-  })
 
   
   # slider UI--------------
