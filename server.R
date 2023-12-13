@@ -179,6 +179,7 @@ server <- function(input, output, session) {
     # cornTech <- input$cornImp
     # fertEff <- input$fertImp
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
+    #simulation1 <- filter(sims, simulation == 1)
     
     makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
            cornPrice = cornPrice, fertPrice = fertPrice) %>%
@@ -187,7 +188,12 @@ server <- function(input, output, session) {
     #               cornTech = cornTech, fertEff = fertEff) %>%
       rename(yield1 = yield,
              leach1 = leaching,
-             net1 = net)
+             conc1 = concentration,
+             net1 = net,
+             yld_stdev1 = cropyld,
+             leach_stdev1 = no3leach,
+             conc_stdev1 = no3conc
+             )
     
   })
   
@@ -213,6 +219,7 @@ server <- function(input, output, session) {
    #         cornTech = cornTech, fertEff = fertEff) %>%
        rename(yield2 = yield,
               leach2 = leaching,
+              conc2 = concentration,
               net2 = net)
     
   })
@@ -283,6 +290,11 @@ server <- function(input, output, session) {
                marker = list(color = "#c99f6e"),
                hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
                hoverinfo = "text") %>%
+     add_trace(y = ~ conc1, name = "Nitrate concentration (ppm)",
+               line = list(color = "#6e8fc9", width = 1),
+               marker = list(color = "#6e8fc9"),
+               hovertext = ~ paste("Nitrate concentration:", round(conc1, 1), "ppm"),
+               hoverinfo = "text") %>%
      add_trace(y = ~ net1, name = "Return to N ($/ac)",
                line = list(color = "black", width = 1),
                marker = list(color = "black"),
@@ -293,11 +305,65 @@ server <- function(input, output, session) {
                hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
                hoverinfo = "text",
                showlegend = F) %>%
+     add_ribbons(ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                 line = list(
+                   color = "#5dbb63",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#5dbb63",
+                 opacity = 0.5) %>%
+     add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
+                 line = list(
+                   color = "#c99f6e",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#c99f6e",
+                 opacity = 0.5) %>%
+     add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
+                 line = list(
+                   color = "#6e8fc9",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#6e8fc9",
+                 opacity = 0.5) %>%
      layout(title = "Responses to fertilizer N",
             xaxis = list(title = "N fertilizer (N lb/ac)"),
             yaxis = list (title = " "),
             hovermode = "x unified",
             legend = list(orientation = 'h', y = -0.2))
+   
+   # plot_ly(dat1(), x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
+   #         type = 'scatter', mode = 'lines+markers',
+   #         line = list(color = "#5dbb63", width = 1),
+   #         marker = list(size = 10, color = "#5dbb63"),
+   #         hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
+   #         hoverinfo = "text"
+   #        ) %>%
+   #   add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
+   #             line = list(color = "#c99f6e", width = 1),
+   #             marker = list(color = "#c99f6e"),
+   #             hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
+   #             hoverinfo = "text") %>%
+   #   add_trace(y = ~ conc1, name = "Nitrate concentration (ppm)",
+   #             line = list(color = "#6e8fc9", width = 1),
+   #             marker = list(color = "#6e8fc9"),
+   #             hovertext = ~ paste("Nitrate concentration:", round(conc1, 1), "ppm"),
+   #             hoverinfo = "text") %>%
+   #   add_trace(y = ~ net1, name = "Return to N ($/ac)",
+   #             line = list(color = "black", width = 1),
+   #             marker = list(color = "black"),
+   #             hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
+   #             hoverinfo = "text") %>%
+   #   add_trace(y = 0,
+   #             opacity = 0,
+   #             hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
+   #             hoverinfo = "text",
+   #             showlegend = F) %>%
+   #   layout(title = "Responses to fertilizer N",
+   #          xaxis = list(title = "N fertilizer (N lb/ac)"),
+   #          yaxis = list (title = " "),
+   #          hovermode = "x unified",
+   #          legend = list(orientation = 'h', y = -0.2))
    
    })
   
@@ -321,6 +387,11 @@ server <- function(input, output, session) {
                marker = list(symbol = "circle", color = "#5dbb63"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                hoverinfo = "text") %>%
+     add_trace(y = ~ conc1, name = "Nitrate concentration (ppm)",
+               line = list(color = "#5dbb63", width = 2),
+               marker = list(symbol = "diamond", color = "#5dbb63"),
+               hovertext = ~ paste(sim1, "nitrate concentration:", round(conc1, 1), "ppm"),
+               hoverinfo = "text") %>%
      add_trace(y = ~ net1, name = paste(sim1, "return to N ($/ac)"),
                line = list(color = "#5dbb63", width = 1),
                marker = list(symbol = "circle-open", color = "#5dbb63"),
@@ -337,6 +408,11 @@ server <- function(input, output, session) {
                hovertext = ~paste(sim2, "nitrate leaching:",round(leach2, 1), "lbs/ac"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
                marker = list(symbol = "circle", color = "#c99f6e"),
+               hoverinfo = "text") %>%
+     add_trace(y = ~ conc2, name = paste(sim2, "NO3 concentration (ppm)"),
+               line = list(color = "#c99f6e", width = 2),
+               marker = list(symbol = "diamond", color = "#c99f6e"),
+               hovertext = ~ paste(sim2, "nitrate concentration:", round(conc2, 1), "ppm"),
                hoverinfo = "text") %>%
      add_trace(y = ~ net2, name = paste(sim2, "return to N ($/ac)"),
                line = list(color = "#c99f6e", width = 1),
@@ -393,23 +469,26 @@ output$values1 <- render_gt({
   #req(length(input$simSelect1) == 1)
   req(input$range_dat)
   #req(dat1())
+  print(head(dat1()))
   
   newdat1 <- dat1() %>%
     filter(fert == input$range_dat) %>% 
     mutate(leaching = round(leach1, 1),
            yield = round(yield1, 1),
+           concentration = round(conc1, 1),
            net = round(net1, 1))
   
   # remove duplicates
   newdat1 <- newdat1[1,]
 
   newdat1 %>%
-    select(c(fert, yield, leaching, net)) %>%
+    select(c(fert, yield, leaching, concentration, net)) %>%
     gt() %>%
     cols_label(
       fert = "N fertilizer (lb/ac)",
       yield = "Yield (bu/ac)",
       leaching = "Nitrate leaching (lb/ac)",
+      concentration = "Nitrate concentration (ppm)",
       net = "RTN ($/ac)"
     ) %>%
     tab_header(title = paste(input$simSelect1, "output"))
@@ -427,18 +506,20 @@ output$values1 <- render_gt({
       filter(fert == input$range_dat) %>%
       mutate(leaching = round(leach2, 1),
             yield = round(yield2, 1),
+            concentration = round(conc2, 1),
             net = round(net2, 1))
   
     # remove duplicates
     newdat2 <- newdat2[1,]
 
     newdat2 %>%
-      select(c(fert, yield, leaching, net)) %>%
+      select(c(fert, yield, leaching, concentration, net)) %>%
       gt() %>%
       cols_label(
         fert = "N fertilizer (lb/ac)",
         yield = "Yield (bu/ac)",
         leaching = "Nitrate leaching (lb/ac)",
+        concentration = "Nitrate concentration (ppm)",
         net = "RTN ($/ac)"
       ) %>%
       tab_header(title = paste(input$simSelect2, "output"))
