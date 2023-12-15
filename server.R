@@ -79,9 +79,9 @@ server <- function(input, output, session) {
     
     click <- input$map_marker_click
     lat <- click$lat
-    print(lat)
+    #print(lat)
     lon <- click$lng
-    print(lon)
+    #print(lon)
     
     selectedPoint(
     list(lat = lat, lon = lon)
@@ -108,7 +108,7 @@ server <- function(input, output, session) {
     #req(input$map_marker_click)
     req(vals$count >= 1)
 
-    print("inside render selection")
+    #print("inside render selection")
 
     tagList(
       uiOutput("select1"),
@@ -220,7 +220,10 @@ server <- function(input, output, session) {
        rename(yield2 = yield,
               leach2 = leaching,
               conc2 = concentration,
-              net2 = net)
+              net2 = net,
+              yld_stdev2 = cropyld,
+              leach_stdev2 = no3leach,
+              conc_stdev2  = no3conc)
     
   })
   
@@ -231,13 +234,17 @@ server <- function(input, output, session) {
     df1 <- dat1()
     df2 <- dat2()
     
-    compareDat <- left_join(df1, df2, by = "fert")
-    fert10 <- seq(from = 0, to = 300, by = 10)
-    fert10 <- data.frame(fert10 = fert10)
-    compareDat_fert10 <- left_join(fert10, compareDat, by = c("fert10" = "fert"))
+    compareDat <- left_join(df1, df2, by = "fertAttach") %>%
+      select(c(fert = fert.x, yield1:conc_stdev1, yield2:conc_stdev2))
+    print("compareDat")
+    print(head(compareDat))
+    print(names(compareDat))
+    # fert10 <- seq(from = 0, to = 300, by = 10)
+    # fert10 <- data.frame(fert10 = fert10)
+    # compareDat_fert10 <- left_join(fert10, compareDat, by = c("fert10" = "fert"))
     
-    print(head(compareDat_fert10))
-    compareDat_fert10
+    #print(head(compareDat_fert10))
+    compareDat
     
   })
   
@@ -279,27 +286,31 @@ server <- function(input, output, session) {
    #plot_ly(type = "scatter", mode = "markers") %>%
    
    plot_ly(dat1(), x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
-           type = 'scatter', mode = 'lines+markers',
-           line = list(color = "#5dbb63", width = 1),
-           marker = list(size = 10, color = "#5dbb63"),
+           type = 'scatter', mode = 'lines',
+           line = list(color = "#5dbb63", width = 1.5),
+           #marker = list(size = 1, color = "#5dbb63"),
            hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
-           hoverinfo = "text"
+           hoverinfo = "text",
+           legendgroup = "yield"
           ) %>%
      add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
-               line = list(color = "#c99f6e", width = 1),
-               marker = list(color = "#c99f6e"),
+               line = list(color = "#c99f6e", width = 1.5),
+               #marker = list(color = "#c99f6e"),
                hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
-               hoverinfo = "text") %>%
+               hoverinfo = "text",
+               legendgroup = "leach") %>%
      add_trace(y = ~ conc1, name = "Nitrate concentration (ppm)",
-               line = list(color = "#6e8fc9", width = 1),
-               marker = list(color = "#6e8fc9"),
+               line = list(color = "#6e8fc9", width = 1.5),
+               #marker = list(color = "#6e8fc9"),
                hovertext = ~ paste("Nitrate concentration:", round(conc1, 1), "ppm"),
-               hoverinfo = "text") %>%
+               hoverinfo = "text", 
+               legendgroup = "conc") %>%
      add_trace(y = ~ net1, name = "Return to N ($/ac)",
-               line = list(color = "black", width = 1),
-               marker = list(color = "black"),
+               line = list(color = "black", width = 1.5),
+               #marker = list(color = "black"),
                hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
-               hoverinfo = "text") %>%
+               hoverinfo = "text",
+               legendgroup = "net") %>%
      add_trace(y = 0,
                opacity = 0,
                hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
@@ -311,21 +322,24 @@ server <- function(input, output, session) {
                    width = 0.5,
                    opacity = 0),
                  fillcolor = "#5dbb63",
-                 opacity = 0.5) %>%
+                 opacity = 0.5,
+                 legendgroup = "yield", showlegend = FALSE) %>%
      add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
                  line = list(
                    color = "#c99f6e",
                    width = 0.5,
                    opacity = 0),
                  fillcolor = "#c99f6e",
-                 opacity = 0.5) %>%
+                 opacity = 0.5,
+                 legendgroup = "leach", showlegend = FALSE) %>%
      add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
                  line = list(
                    color = "#6e8fc9",
                    width = 0.5,
                    opacity = 0),
                  fillcolor = "#6e8fc9",
-                 opacity = 0.5) %>%
+                 opacity = 0.5,
+                 legendgroup = "conc", showlegend = FALSE) %>%
      layout(title = "Responses to fertilizer N",
             xaxis = list(title = "N fertilizer (N lb/ac)"),
             yaxis = list (title = " "),
@@ -374,54 +388,112 @@ server <- function(input, output, session) {
    #req(input$simSelect2)
    sim1 <- input$simSelect1
    sim2 <- input$simSelect2
+   
+   ##TODO recreate plot to include ribbons?
 
-   plot_ly(compareDat(), x = ~fert10, y = ~ yield1, name = paste(sim1, "yield (bu/ac)"),
-           type = 'scatter', mode = 'lines+markers',
-           line = list(color = "#5dbb63", width = 2),
-           marker = list(symbol = "x", size = 10, color = "#5dbb63"),
+   plot_ly(compareDat(), x = ~fert, y = ~ yield1, name = paste(sim1, "yield (bu/ac)"),
+           type = 'scatter', mode = 'lines',
+           line = list(color = "#285430", width = 2),
+           #marker = list(symbol = "x", size = 10, color = "#5dbb63"),
            hovertext = ~ paste(sim1, "yield:",round(yield1, 1), "bu/ac"),
-           hoverinfo = "text") %>%
+           hoverinfo = "text",
+           legendgroup = "yield1") %>%
      add_trace(y = ~ leach1, name = paste(sim1, "NO3 leaching (lb/ac)"),
-               line = list(color = "#5dbb63", width = 2),
+               line = list(color = "#5f8d4e", width = 2),
                hovertext = ~paste(sim1, "nitrate leaching:",round(leach1, 1), "lbs/ac"),
-               marker = list(symbol = "circle", color = "#5dbb63"),
+               #marker = list(symbol = "circle", color = "#5dbb63"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-               hoverinfo = "text") %>%
+               hoverinfo = "text",
+               legendgroup = "leach1") %>%
      add_trace(y = ~ conc1, name = "Nitrate concentration (ppm)",
-               line = list(color = "#5dbb63", width = 2),
-               marker = list(symbol = "diamond", color = "#5dbb63"),
+               line = list(color = "#84b37d", width = 2),
+               #marker = list(symbol = "diamond", color = "#5dbb63"),
                hovertext = ~ paste(sim1, "nitrate concentration:", round(conc1, 1), "ppm"),
-               hoverinfo = "text") %>%
+               hoverinfo = "text",
+               legendgroup = "conc1") %>%
      add_trace(y = ~ net1, name = paste(sim1, "return to N ($/ac)"),
-               line = list(color = "#5dbb63", width = 1),
-               marker = list(symbol = "circle-open", color = "#5dbb63"),
+               line = list(color = "#344d67", width = 2),
+               #marker = list(symbol = "circle-open", color = "#5dbb63"),
                hovertext = ~ paste(sim1, "return to N:", round(net1, 1), "$/ac"),
-               hoverinfo = "text") %>%
+               hoverinfo = "text",
+               legendgroup = "net1") %>%
+     add_ribbons(ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                 line = list(
+                   color = "#285430",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#285430",
+                 opacity = 0.5,
+                 legendgroup = "yield1", showlegend = FALSE) %>%
+     add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
+                 line = list(
+                   color = "#5f8d4e",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#5f8d4e",
+                 opacity = 0.5,
+                 legendgroup = "leach1", showlegend = FALSE) %>%
+     add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
+                 line = list(
+                   color = "#84b37d",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#84b37d",
+                 opacity = 0.5,
+                 legendgroup = "conc1", showlegend = FALSE) %>%
      add_trace(y = ~ yield2, name = paste(sim2, "yield (bu/ac)"),
-               line = list(color = "#c99f6e", width = 2),
+               line = list(color = "#ab7940", width = 2),
                hovertext = ~paste(sim2, "yield:",round(yield2, 1), "bu/ac"),
-               marker = list(symbol = "x", color = "#c99f6e"),
+               #marker = list(symbol = "x", color = "#c99f6e"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-               hoverinfo = "text") %>%
+               hoverinfo = "text",
+               legendgroup = "yield2") %>%
      add_trace(y = ~ leach2, name = paste(sim2, "NO3 leaching (lb/ac)"),
-               line = list(color = "#c99f6e", width = 2),
+               line = list(color = "#c2935b", width = 2),
                hovertext = ~paste(sim2, "nitrate leaching:",round(leach2, 1), "lbs/ac"),
                #hovertemplate = "<i>Surveys: %{text}</i><extra></extra>",
-               marker = list(symbol = "circle", color = "#c99f6e"),
-               hoverinfo = "text") %>%
+               #marker = list(symbol = "circle", color = "#c99f6e"),
+               hoverinfo = "text",
+               legendgroup = "leach2") %>%
      add_trace(y = ~ conc2, name = paste(sim2, "NO3 concentration (ppm)"),
-               line = list(color = "#c99f6e", width = 2),
-               marker = list(symbol = "diamond", color = "#c99f6e"),
+               line = list(color = "#d0ab81", width = 2),
+               #marker = list(symbol = "diamond", color = "#c99f6e"),
                hovertext = ~ paste(sim2, "nitrate concentration:", round(conc2, 1), "ppm"),
-               hoverinfo = "text") %>%
+               hoverinfo = "text",
+               legendgroup = "conc2") %>%
      add_trace(y = ~ net2, name = paste(sim2, "return to N ($/ac)"),
-               line = list(color = "#c99f6e", width = 1),
-               marker = list(symbol = "circle-open", color = "#c99f6e"),
+               line = list(color = "#dec4a6", width = 1),
+               #marker = list(symbol = "circle-open", color = "#c99f6e"),
                hovertext = ~ paste(sim2, "return to N:", round(net2, 1), "$/ac"),
-               hoverinfo = "text") %>%
+               hoverinfo = "text",
+               legendgroup = "net2") %>%
+     add_ribbons(ymin = ~ yield2 - yld_stdev2, ymax = ~ yield2 + yld_stdev2,
+                 line = list(
+                   color = "#ab7940",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#ab7940",
+                 opacity = 0.5,
+                 legendgroup = "yield2", showlegend = FALSE) %>%
+     add_ribbons(ymin = ~ leach2 - leach_stdev2, ymax = ~ leach2 + leach_stdev2,
+                 line = list(
+                   color = "#c2935b",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#c2935b",
+                 opacity = 0.5,
+                 legendgroup = "leach2", showlegend = FALSE) %>%
+     add_ribbons(ymin = ~ conc2 - conc_stdev2, ymax = ~ conc2 + conc_stdev2,
+                 line = list(
+                   color = "#d0ab81",
+                   width = 0.5,
+                   opacity = 0),
+                 fillcolor = "#d0ab81",
+                 opacity = 0.5,
+                 legendgroup = "conc2", showlegend = FALSE) %>%
      add_trace(y = 0,
                opacity = 0,
-               hovertext = ~ paste("N fert rate:",fert10, "lbs N/ac"),
+               hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
                hoverinfo = "text",
                showlegend = F) %>%
      layout(title = "Responses to fertilizer N",
@@ -469,7 +541,8 @@ output$values1 <- render_gt({
   #req(length(input$simSelect1) == 1)
   req(input$range_dat)
   #req(dat1())
-  print(head(dat1()))
+  ##TODO recreate data so there are no gaps between fert vals
+  #print(head(dat1()))
   
   newdat1 <- dat1() %>%
     filter(fert == input$range_dat) %>% 
@@ -501,7 +574,7 @@ output$values1 <- render_gt({
     #req(length(input$simSelect2) == 1)
     req(input$range_dat)
     #req(dat2())
-     
+    ##TODO recreate data so there are no gaps in fert vals 
     newdat2 <- dat2() %>%
       filter(fert == input$range_dat) %>%
       mutate(leaching = round(leach2, 1),
