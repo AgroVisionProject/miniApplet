@@ -32,7 +32,7 @@ sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
 simNames = sims$cropSystem
 
 # define fertilizer/x axis----------
-#fert = seq(from = 0, to = 300, by = 1) #kg/ha
+fert = seq(from = 0, to = 350, by = 1) #kg/ha
 # convert kg/ha to lb/ac
 kgha_to_lbac <- function(x) {
   lbac <- x*(2.20462/2.47105)
@@ -58,7 +58,7 @@ base_map <- function() {
 
 
 # determine response curve--------
-responseCurve <- function(dataframe, fun, fert) {
+responseCurve <- function(dataframe, fun) {
   
   response <- c()
   #constant
@@ -92,6 +92,7 @@ responseCurve <- function(dataframe, fun, fert) {
 makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   #makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, cornTech, fertEff) {
   
+  ##TODO go back to joining by fert as assigned above. this will help with the slide vals and the compareDat
   req(is.na(simulation) == FALSE)
   
   if(simulation == 1) {var = sim1Var}
@@ -104,8 +105,8 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
     filter(lat == site_lat,
            lon == site_lon)
   
-  print("head var")
-  print(head(var))
+  #print("head var")
+  #print(head(var))
   
   yield_df_sum <- yield_df %>%
     filter(sim == simulation,
@@ -126,52 +127,55 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   leachFun <- leach_df_sum$fun
   concFun <- conc_df_sum$fun
 
-  fertOrder <- unique(sort(var$meanFert))
-  print("fert")
-  print(fertOrder)
+  #fertOrder <- unique(sort(var$meanFert))
+  #print("fert")
+  #print(fertOrder)
 
-  yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun, fert = fertOrder)
-  print(yield_y)
+  yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
+  #print(yield_y)
   # corn yield improvements
   #yield_new <- yield_y * cornTech
-  leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun, fert = fertOrder)
-  print(leach_y)
+  leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
+  #print(leach_y)
   # nitrogen use improvements
   #leach_new <- leach_y * fertEff
-  conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun, fert = fertOrder)
-  print(conc_y)
+  conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun)
+  #print(conc_y)
 
   cornVal <- (yield_y - yield_y[1]) * cornPrice
-  fertCost <- round(kgha_to_lbac(fertOrder)) * fertPrice
+  fertCost <- round(kgha_to_lbac(fert)) * fertPrice
   NUE <- 0.5
   nloss <- NUE * leach_y * fertPrice
   net <- cornVal - fertCost - nloss
 
-  fertAttach = plyr::round_any(kgha_to_lbac(fertOrder), 5)
-  print("fertAttach")
-  print(fertAttach)
-
-  modelDF <- data.frame(fert = round(kgha_to_lbac(fertOrder)), yield = yield_y, leaching = kgha_to_lbac(leach_y), concentration = conc_y,
-             net = net, fertAttach = fertAttach) %>%
+  modelDF <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y), concentration = conc_y,
+             net = net) %>%
     arrange(fert)
+  print(nrow(modelDF))
 
   #print(modelDF)
 
   var <- var %>%
-    select(c(stdev, variable, fertilizerLbsAc, meanFert)) %>%
-    mutate(fertAttach = plyr::round_any(kgha_to_lbac(meanFert), 5)) %>%
-    arrange(fertAttach)
+    select(c(stdev, variable, fertilizerLbsAc)) %>%
+    mutate(fert = round(fertilizerLbsAc))
+   
+  # join modeled DF and variance 
+  model_var <- left_join(modelDF, var) 
+  
+  # modelDF max fert should be var max fert
+  maxFert <- max(var$fert)
+  modelDF <- filter(modelDF, fert < maxFert)
+  print(maxFert)
+  print(nrow(modelDF))
+  
+  # create stdev column for each variable
+  stdev_wide <- model_var %>%
+    drop_na(stdev) %>%
+    pivot_wider(values_from = stdev, names_from = "variable", names_prefix = "stdev_")
+  #print("stdev_wide")
+  #print(stdev_wide)
 
-  #print(var)
-  print(levels(as.factor(var$fertAttach)))
-   
-  dfVar <- left_join(var, modelDF)
-   
-  print(dfVar)
-  # 
-  sd_wide <- dfVar %>% pivot_wider(values_from = stdev, names_from = "variable")
-  print(sd_wide)
-  return(sd_wide)
+  return(list(modelDF, stdev_wide))
   
 }
 
@@ -201,140 +205,268 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
 # 
 # var <- sim1Var %>%
 #   filter(lat == yield_df_sum$lat,
-#          lon == yield_df_sum$lon) 
-# # 
-#  fertOrder <- unique(sort(var$meanFert))
-# # 
-#  yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun, fert = fertOrder)
-# # 
-#  leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun, fert = fertOrder)
-# # 
-#  conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun, fert = fertOrder)
-# # 
-# # cornPrice = 5
-# # fertPrice = 1
-#  cornVal <- (yield_y - yield_y[1]) * cornPrice
-#  fertCost <- kgha_to_lbac(fertOrder) * fertPrice
-# # NUE <- 0.5
-#  nloss <- NUE * leach_y * fertPrice
-#  net <- cornVal - fertCost - nloss
-# # 
-#  fertAttach = plyr::round_any(kgha_to_lbac(fertOrder), 5)
+#          lon == yield_df_sum$lon)
 # 
-#  # #fertOrder <- unique(sort(var$meanFert))
-# modelDF <- data.frame(fert = round(kgha_to_lbac(fertOrder)), yield = yield_y, leaching = kgha_to_lbac(leach_y), concentration = conc_y,
-#                       net = net, fertAttach = fertAttach)
-# 
-# # modelDF
-# # var <- var %>%
-# #   select(c(stdev, variable, fertilizerLbsAc, meanFert)) %>%
-# #   mutate(fertilizerLbsAc = round(fertilizerLbsAc))
-# var <- var %>%
-#   select(c(stdev, variable, fertilizerLbsAc, meanFert)) %>%
-#   mutate(fertAttach = plyr::round_any(kgha_to_lbac(meanFert), 5))
-# 
-# #sd_wide <- var %>% pivot_wider(values_from = stdev, names_from = "variable")
-# 
-# dfVar <- left_join(var, modelDF)
-# # 
-# # dfVar <- left_join(var, modelDF, by = c("fertilizerLbsAc" = "fert"))
-# # 
-# # print(dfVar[1:60,])
-# # # 
-#  dfVar2 <- dfVar %>% pivot_wider(values_from = stdev, names_from = "variable") %>%
-#    arrange(fertilizerLbsAc)
-# # # print(head(dfVar2))
-# # return(modelDF)
-#  p <- plot_ly(dfVar2, x = ~fert, y = ~ yield, name = "Yield (bu/ac)",
-#          type = 'scatter', mode = 'lines+markers',
-#          line = list(color = "#5dbb63", width = 1),
-#          marker = list(size = 10, color = "#5dbb63"),
-#          hovertext = ~ paste("Yield:", round(yield, 1), "bu/ac"),
-#          hoverinfo = "text"
-#  ) %>%
-#    add_trace(y = ~ leaching, name = "Nitrate leaching (lb/ac)",
-#              line = list(color = "#c99f6e", width = 1),
-#              marker = list(color = "#c99f6e"),
-#              hovertext = ~ paste("Nitrate leaching:", round(leaching, 1), "lbs/ac"),
-#              hoverinfo = "text") %>%
-#    add_trace(y = ~ concentration, name = "Nitrate concentration (ppm)",
-#              line = list(color = "#6e8fc9", width = 1),
-#              marker = list(color = "#6e8fc9"),
-#              hovertext = ~ paste("Nitrate concentration:", round(concentration, 1), "ppm"),
-#              hoverinfo = "text") %>%
-#    add_trace(y = ~ net, name = "Return to N ($/ac)",
-#              line = list(color = "black", width = 1),
-#              marker = list(color = "black"),
-#              hovertext = ~ paste("Return to N:", round(net, 1), "$/ac"),
-#              hoverinfo = "text") %>%
-#    add_trace(y = 0,
-#              opacity = 0,
-#              hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
-#              hoverinfo = "text",
-#              showlegend = F)
-#  
-#  p %>%
-#    add_ribbons(ymin = ~ yield - cropyld, ymax = ~ yield + cropyld,
-#                line = list(
-#                  color = "#5dbb63",
-#                  width = 0.5,
-#                  opacity = 0),
-#                fillcolor = "#5dbb63",
-#                opacity = 0.5) %>%
-#    add_ribbons(ymin = ~ leaching - no3leach, ymax = ~ leaching + no3leach,
-#                line = list(
-#                  color = "#c99f6e",
-#                  width = 0.5,
-#                  opacity = 0),
-#                fillcolor = "#c99f6e",
-#                opacity = 0.5) %>%
-#    add_ribbons(data = stdev_conc, x = ~fert, ymin = ~ conc - stdev_no3conc, ymax = ~ conc + stdev_no3conc,
-#                line = list(
-#                  color = "black",
-#                  width = 0.5,
-#                  opacity = 0),
-#                fillcolor = "black",
-#                opacity = 0.5)
-#  layout(title = "Responses to fertilizer N",
-#         xaxis = list(title = "N fertilizer (N lb/ac)"),
-#         yaxis = list (title = " "),
-#         hovermode = "x unified",
-#         legend = list(orientation = 'h', y = -0.2))
-#  
 # 
 # yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
 # leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
+# conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun)
 # 
 # cornPrice = 5
-# fertPrice = 1.1
+# fertPrice = 1
 # cornVal <- (yield_y - yield_y[1]) * cornPrice
-# fertCost <- round(kgha_to_lbac(fert)) * fertPrice
+# fertCost <- kgha_to_lbac(fert) * fertPrice
 # NUE <- 0.5
 # nloss <- NUE * leach_y * fertPrice
 # net <- cornVal - fertCost - nloss
 # 
-# testdf <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y),
-#            net = net)
+# 
+# modelDF1 <- data.frame(fert = round(kgha_to_lbac(fert)), yield1 = yield_y,
+#                       leach1 = kgha_to_lbac(leach_y), conc1 = conc_y,
+#                       net1 = net)
+# 
+# # modelDF
+# 
+# var1 <- var %>%
+#   select(c(stdev, variable, fertilizerLbsAc, meanFert)) %>%
+#   mutate(fert = round(fertilizerLbsAc))
+# 
+# model_var1 <- left_join(modelDF1, var1)
+# 
+# # modelDF max fert should be var max fert
+# maxFert <- max(var$fert)
+# modelDF <- filter(modelDF, fert < maxFert)
+# print(maxFert)
+# print(nrow(modelDF))
+# 
+# # create stdev column for each variable
+# stdev_wide1 <- model_var1 %>%
+#   drop_na(stdev) %>%
+#   pivot_wider(values_from = stdev, names_from = "variable", names_prefix = "stdev_") %>%
+#   rename(yld_stdev1 = stdev_cropyld, leach_stdev1 = stdev_no3leach, conc_stdev1 = stdev_no3conc)
+# #print("stdev_wide")
+# 
+# head(stdev_wide1)
+# ##TODO how do I align the ribbons and lines?
+# plot_ly(modelDF1, x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
+#         type = 'scatter', mode = 'lines',
+#         line = list(color = "#5dbb63", width = 2),
+#         #marker = list(size = 1, color = "#5dbb63"),
+#         hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
+#         hoverinfo = "text",
+#         legendgroup = "yield") %>%
+#   add_trace(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
+#             line = list(color = "#c99f6e", width = 2),
+#             #marker = list(color = "#c99f6e"),
+#             hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
+#             hoverinfo = "text",
+#             legendgroup = "leach") %>%
+#   add_trace(y = ~ conc1, name = "Nitrate concentration (ppm)",
+#             line = list(color = "#6e8fc9", width = 2),
+#             #marker = list(color = "#6e8fc9"),
+#             hovertext = ~ paste("Nitrate concentration:", round(conc1, 1), "ppm"),
+#             hoverinfo = "text",
+#             legendgroup = "conc") %>%
+#   add_trace(y = ~ net1, name = "Return to N ($/ac)",
+#             line = list(color = "black", width = 2.5),
+#             #marker = list(color = "black"),
+#             hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
+#             hoverinfo = "text",
+#             legendgroup = "net") %>%
+#   # add_trace(y = 0,
+#   #           opacity = 0,
+#   #           hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
+#   #           hoverinfo = "text",
+#   #           showlegend = F) %>%
+#   add_ribbons(data = stdev_wide1, x = ~ fert, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+#               line = list(
+#                 color = "#5dbb63",
+#                 width = 0.5,
+#                 opacity = 0),
+#               hovertext = ~paste("yield: ±", round(yld_stdev1)),
+#               fillcolor = "#5dbb63",
+#               opacity = 0.5,
+#               legendgroup = "yield", showlegend = FALSE) %>%
+#   add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
+#               line = list(
+#                 color = "#c99f6e",
+#                 width = 0.5,
+#                 opacity = 0),
+#               hovertext = ~paste("nitrate leaching: ±", round(leach_stdev1, 1)),
+#               fillcolor = "#c99f6e",
+#               opacity = 0.5,
+#               legendgroup = "leach", showlegend = FALSE) %>%
+#   add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
+#               line = list(
+#                 color = "#6e8fc9",
+#                 width = 0.5,
+#                 opacity = 0),
+#               hovertext = ~paste("nitrate concentration: ±", round(conc_stdev1, 1)),
+#               fillcolor = "#6e8fc9",
+#               opacity = 0.5,
+#               legendgroup = "conc", showlegend = FALSE) %>%
+#   layout(title = "Responses to fertilizer N",
+#          xaxis = list(title = "N fertilizer (N lb/ac)"),
+#          yaxis = list (title = " "),
+#          hovermode = "x unified",
+#          legend = list(orientation = 'h', y = -0.2))
+# 
+# # test data set plot 2---------------------
+# 
+# ##TODO make 2nd data set and test plot
+# 
+# yield_df_sum2 <- yield_df %>%
+#   filter(sim == 2,
+#          STATE_NAME == "Wisconsin",
+#          NAME == "Dane") %>%
+#   slice(1)
+# 
+# leach_df_sum2 <- leach_df %>%
+#   filter(sim == 2,
+#          STATE_NAME == "Wisconsin",
+#          NAME == "Dane") %>%
+#   slice(1)
+# 
+# conc_df_sum2 <- conc_df %>%
+#   filter(sim == 2,
+#          STATE_NAME == "Wisconsin",
+#          NAME == "Dane") %>%
+#   slice(1)
+# 
+# yieldFun2 <- yield_df_sum2$fun
+# leachFun2 <- leach_df_sum2$fun
+# concFun2 <- conc_df_sum2$fun
+# 
+# var <- sim2Var %>%
+#   filter(lat == yield_df_sum$lat,
+#          lon == yield_df_sum$lon)
+# 
+# yield_y2 <- responseCurve(dataframe = yield_df_sum2, fun = yieldFun2)
+# leach_y2 <- responseCurve(dataframe = leach_df_sum2, fun = leachFun2)
+# conc_y2 <- responseCurve(dataframe = conc_df_sum2, fun = concFun2)
+# 
+# cornVal2 <- (yield_y2 - yield_y2[1]) * cornPrice
+# fertCost2 <- kgha_to_lbac(fert) * fertPrice
+# NUE <- 0.5
+# nloss2 <- NUE * leach_y2 * fertPrice
+# net2 <- cornVal2 - fertCost2 - nloss2
 # 
 # 
-# p <- plot_ly(testdf, x = ~fert, y = ~ yield, name = "Yield (bu/ac)",
-#              type = 'scatter', mode = 'lines+markers',
-#              line = list(color = "#5dbb63", width = 1),
-#              marker = list(size = 10, color = "#5dbb63"),
-#              hovertext = ~ paste("Yield:", round(yield, 1), "bu/ac"),
-#              hoverinfo = "text"
-# ) %>%
-#   add_trace(y = ~ leaching, name = "Nitrate leaching (lb/ac)",
-#             line = list(color = "#c99f6e", width = 1),
-#             marker = list(color = "#c99f6e"),
-#             hovertext = ~ paste("Nitrate leaching:", round(leaching, 1), "lbs/ac"),
-#             hoverinfo = "text") %>%
-#   add_trace(y = ~ net, name = "Return to N ($/ac)",
-#             line = list(color = "black", width = 1),
-#             marker = list(color = "black"),
-#             hovertext = ~ paste("Return to N:", round(net, 1), "$/ac"),
-#             hoverinfo = "text") %>%
+# modelDF2 <- data.frame(fert = round(kgha_to_lbac(fert)), yield2 = yield_y2, leach2 = kgha_to_lbac(leach_y2), conc2 = conc_y2,
+#                       net2 = net2)
+# 
+# var2 <- var %>%
+#   select(c(stdev, variable, fertilizerLbsAc, meanFert)) %>%
+#   mutate(fert = round(fertilizerLbsAc))
+# 
+# model_var2 <- left_join(modelDF2, var2)
+# 
+# # modelDF max fert should be var max fert
+# maxFert <- max(var$fert)
+# modelDF <- filter(modelDF, fert < maxFert)
+# print(maxFert)
+# print(nrow(modelDF))
+# 
+# # create stdev column for each variable
+# stdev_wide2 <- model_var2 %>%
+#   drop_na(stdev) %>%
+#   pivot_wider(values_from = stdev, names_from = "variable", names_prefix = "stdev_") %>%
+#   rename(yld_stdev2 = stdev_cropyld, leach_stdev2 = stdev_no3leach, conc_stdev2 = stdev_no3conc)
+# 
+# 
+# ##TODO start here
+# p <- plot_ly(data = modelDF1, x = ~fert, hoverinfo = "text") %>%
+#   add_lines(y = ~ yield1, name = paste("sim1", "yield (bu/ac)"),
+#             line = list(color = "#5dbb63", width = 2, dash = "solid"),
+#             hovertext = ~ paste("sim1", "yield:",round(yield1, 1), "bu/ac"),
+#             #hoverinfo = "text",
+#             legendgroup = "yield1") %>%
+#   add_lines(y = ~ leach1, name = paste("sim1", "NO3 leaching (lb/ac)"),
+#             line = list(color = "#5dbb63", width = 2, dash = "dash"),
+#             hovertext = ~paste("sim1", "nitrate leaching:",round(leach1, 1), "lbs/ac"),
+#             hoverinfo = "text",
+#             legendgroup = "leach1") %>%
+#   add_lines(y = ~ conc1, name = paste("sim1", "NO3 concentration (ppm)"),
+#             line = list(color = "#5dbb63", width = 2, dash = "dot"),
+#             hovertext = ~ paste("sim1", "nitrate concentration:", round(conc1, 1), "ppm"),
+#             hoverinfo = "text",
+#             legendgroup = "conc1") %>%
+#   add_lines(y = ~ net1, name = paste("sim1", "return to N ($/ac)"),
+#             line = list(color = "#5dbb63", width = 3, dash = "dashdot"),
+#             hovertext = ~ paste("sim1", "return to N:", round(net1, 1), "$/ac"),
+#             hoverinfo = "text",
+#             legendgroup = "net1") %>%
+#   add_ribbons(data = stdev_wide1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+#               line = list(
+#                 color = "#5dbb63"),
+#               fillcolor = "#5dbb63",
+#               hovertext = ~paste("sim1", "yield:", "±", round(yld_stdev1)),
+#               opacity = 0.5,
+#               legendgroup = "yield1", showlegend = FALSE) %>%
+#   add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
+#               line = list(
+#                 color = "#5dbb63",
+#                 width = 0.5,
+#                 opacity = 0),
+#               fillcolor = "#5dbb63",
+#               hovertext = ~paste("nitrate leach: ±", round(leach_stdev1, 1)),
+#               opacity = 0.5,
+#               legendgroup = "leach1", showlegend = FALSE) %>%
+#   add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
+#               line = list(
+#                 color = "#5dbb63",
+#                 width = 0.5,
+#                 opacity = 0),
+#               fillcolor = "#5dbb63",
+#               hovertext = ~paste("nitrate concentration: ±", round(conc_stdev1, 1)),
+#               opacity = 0.5,
+#               legendgroup = "conc1", showlegend = FALSE)  %>%
+#   add_lines(data = modelDF2, y = ~ yield2, name = paste("sim2", "yield (bu/ac)"),
+#             line = list(color = "#c99f6e", width = 1, dash = "solid"),
+#             hovertext = ~paste("sim2", "yield:",round(yield2, 1), "bu/ac"),
+#             hoverinfo = "text",
+#             legendgroup = "yield2") %>%
+#   add_lines(y = ~ leach2, name = paste("sim2", "NO3 leaching (lb/ac)"),
+#             line = list(color = "#c99f6e", width = 1, dash = "dash"),
+#             hovertext = ~paste("sim2", "nitrate leaching:",round(leach2, 1), "lbs/ac"),
+#             hoverinfo = "text",
+#             legendgroup = "leach2") %>%
+#   add_lines(y = ~ conc2, name = paste("sim2", "NO3 concentration (ppm)"),
+#             line = list(color = "#c99f6e", width = 1, dasy = "dot"),
+#             hovertext = ~ paste("sim2", "nitrate concentration:", round(conc2, 1), "ppm"),
+#             hoverinfo = "text",
+#             legendgroup = "conc2") %>%
+#   add_lines(y = ~ net2, name = paste("sim2", "return to N ($/ac)"),
+#             line = list(color = "#c99f6e", width = 3, dash = "dashdot"),
+#             hovertext = ~ paste("sim2", "return to N:", round(net2, 1), "$/ac"),
+#             hoverinfo = "text",
+#             legendgroup = "net2") %>%
+#   add_ribbons(data = stdev_wide2, ymin = ~ yield2 - yld_stdev2, ymax = ~ yield2 + yld_stdev2,
+#               line = list(
+#                 color = "#c99f6e",
+#                 width = 0.5,
+#                 opacity = 0),
+#               fillcolor = "#c99f6e",
+#               opacity = 0.5,
+#               legendgroup = "yield2", showlegend = FALSE) %>%
+#   add_ribbons(ymin = ~ leach2 - leach_stdev2, ymax = ~ leach2 + leach_stdev2,
+#               line = list(
+#                 color = "#c99f6e",
+#                 width = 0.5,
+#                 opacity = 0),
+#               fillcolor = "#c99f6e",
+#               opacity = 0.5,
+#               legendgroup = "leach2", showlegend = FALSE) %>%
+#   add_ribbons(ymin = ~ conc2 - conc_stdev2, ymax = ~ conc2 + conc_stdev2,
+#               line = list(
+#                 color = "#c99f6e",
+#                 width = 0.5,
+#                 opacity = 0),
+#               fillcolor = "#c99f6e",
+#               opacity = 0.5,
+#               legendgroup = "conc2", showlegend = FALSE) %>%
 #   add_trace(y = 0,
+#             type = 'scatter', mode = 'lines',
 #             opacity = 0,
 #             hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
 #             hoverinfo = "text",
@@ -343,7 +475,10 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
 #          xaxis = list(title = "N fertilizer (N lb/ac)"),
 #          yaxis = list (title = " "),
 #          hovermode = "x unified",
-#          legend = list(orientation = 'h', y = -0.2))
+#          legend = list(orientation = 'h',
+#                        y = -0.3))
+# 
 # 
 # p
-# p %>% onRender(js)
+# 
+# plotly::schema()
