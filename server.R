@@ -183,7 +183,7 @@ server <- function(input, output, session) {
     
     dataList <- makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
            cornPrice = cornPrice, fertPrice = fertPrice) 
-    print(dataList)
+    #print(dataList)
     
     data1 <- dataList[[1]] %>%
       rename(yield1 = yield,
@@ -222,7 +222,7 @@ server <- function(input, output, session) {
     
     dataList <- makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon,
                        cornPrice = cornPrice, fertPrice = fertPrice)
-    print(dataList)
+    #print(dataList)
     
     data1 <- dataList[[1]] %>%
       rename(yield2 = yield,
@@ -244,31 +244,6 @@ server <- function(input, output, session) {
     
   })
   
-  ## compareDat--------------------
-  # compareDat <- reactive({
-  #   
-  #   req(input$simSelect2)
-  #   df1 <- dat1()[[1]]
-  #   df2 <- dat2()[[1]]
-  #   
-  #   compareDat <- left_join(df1, df2) 
-  #   print("compareDat")
-  #   print(head(compareDat))
-  #   
-  #   stdev1 <- dat1()[[2]]
-  #   stdev2 <- dat2()[[2]]
-  #   
-  #   compareStdev <- left_join(stdev1, stdev2) 
-  #   print("compareDat")
-  #   print(head(compareDat))
-  #   
-  #   stdevCompare 
-  #   
-  #   
-  #   compareDat
-  #   
-  # })
-  
   
   # plot UI-------------------------
   
@@ -282,214 +257,416 @@ server <- function(input, output, session) {
     plot <- c()
     if(input$simSelect2 == "None") {
       
-      plot <- plotlyOutput('plot1')
+      plotYldAndRtN <- plotlyOutput('plotYieldReturnSim1')
+      plotYldAndLeach <- plotlyOutput('plotYieldLeachSim1')
+      plotYldAndConc <- plotlyOutput('plotYieldConcSim1')
       
       }
     if(input$simSelect2 != "None") {
 
-      plot <- plotlyOutput('plot2')
+      plotYldAndRtN <- plotlyOutput('plotYieldReturnSim2')
+      plotYldAndLeach <- plotlyOutput('plotYieldLeachSim2')
+      plotYldAndConc <- plotlyOutput('plotYieldConcSim2')
 
       }
 
     tagList(
-      plot,
-      helpText("Click on legend items to add or remove variables from plot")
+      #plot,
+      tags$h4("Responses to fertilizer N (30 year average)"),
+      tabsetPanel(
+        tabPanel("Yield and Return to N",
+                 plotYldAndRtN),
+        tabPanel("Yield and Nitrate Leaching",
+                 plotYldAndLeach),
+        tabPanel("Yield and Nitrate Concentration",
+                 plotYldAndConc),
+        h5("Click on legend items to add or remove variables from plot"),
+        )
     )
 
     })
 
-## plot 1--------------------
- output$plot1 <- renderPlotly({
-
-   req(dat1())
-   
-   data1 <- dat1()[[1]]
-   stdev1 <- dat1()[[2]]
-   
-   plot_ly(data1, x = ~fert, hoverinfo = "text") %>%
-     add_lines(y = ~ yield1, name = "Yield (bu/ac)",
-               line = list(color = "#5dbb63", width = 2),
-               hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
-               legendgroup = "yield") %>%
-     add_lines(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
-               line = list(color = "#c99f6e", width = 2),
-               hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
-               legendgroup = "leach") %>%
-     add_lines(y = ~ conc1, name = "Nitrate concentration (ppm)",
-               line = list(color = "#6e8fc9", width = 2),
-               hovertext = ~ paste("Nitrate concentration:", round(conc1, 1), "ppm"),
-               hoverinfo = "text", 
-               legendgroup = "conc") %>%
-     add_lines(y = ~ net1, name = "Return to N ($/ac)",
-               line = list(color = "black", width = 2.5),
-               hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
-               hoverinfo = "text",
-               legendgroup = "net") %>%
-     add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
-                 line = list(
-                   color = "#5dbb63",
-                   width = 0.5,
-                   opacity = 0),
-                 hovertext = ~paste("yield: ±", round(yld_stdev1)),
-                 fillcolor = "#5dbb63",
-                 opacity = 0.5,
-                 legendgroup = "yield", showlegend = FALSE) %>%
-     add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
-                 line = list(
-                   color = "#c99f6e",
-                   width = 0.5,
-                   opacity = 0),
-                 hovertext = ~paste("nitrate leaching: ±", round(leach_stdev1, 1)),
-                 fillcolor = "#c99f6e",
-                 opacity = 0.5,
-                 legendgroup = "leach", showlegend = FALSE) %>%
-     add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
-                 line = list(
-                   color = "#6e8fc9",
-                   width = 0.5,
-                   opacity = 0),
-                 hovertext = ~paste("nitrate concentration: ±", round(conc_stdev1, 1)),
-                 fillcolor = "#6e8fc9",
-                 opacity = 0.5,
-                 legendgroup = "conc", showlegend = FALSE) %>%
-     add_trace(y = 0,
-               type = 'scatter', mode = 'lines',
-               opacity = 0,
-               hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
-               hoverinfo = "text",
-               showlegend = F) %>%
-     layout(title = "Responses to fertilizer N",
-            xaxis = list(title = "N fertilizer (N lb/ac)"),
-            yaxis = list (title = " "),
-            hovermode = "x unified",
-            legend = list(orientation = 'h', y = -0.2))
-   
-   
-   })
+## yield & return to N plot sim1-----------------------------
   
-
-  ## plot 2--------------------------
- output$plot2 <- renderPlotly({
-
-   #req(input$simSelect2)
-   sim1 <- input$simSelect1
-   sim2 <- input$simSelect2
-   
-   data1 <- dat1()[[1]]
-   stdev1 <- dat1()[[2]]
-   data2 <- dat2()[[1]]
-   stdev2 <- dat2()[[2]]
-   
-   print(stdev2)
-   
-   ##TODO FIGURE OUT HOW TO REORDER THE HOVER OVERS SO THAT FERT IS ON THE BOTTOM
-   plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
-     add_lines(y = ~ yield1, name = paste(sim1, "yield (bu/ac)"),
-               line = list(color = "#5dbb63", width = 2, dash = "solid"),
-               hovertext = ~ paste(sim1, "yield:",round(yield1, 1), "bu/ac"),
-               legendgroup = "yield1") %>%
-     add_lines(y = ~ leach1, name = paste(sim1, "NO3 leaching (lb/ac)"),
-               line = list(color = "#5dbb63", width = 2, dash = "dash"),
-               hovertext = ~paste(sim1, "nitrate leaching:",round(leach1, 1), "lbs/ac"),
-               hoverinfo = "text",
-               legendgroup = "leach1") %>%
-     add_lines(y = ~ conc1, name = paste(sim1, "NO3 concentration (ppm)"),
-               line = list(color = "#5dbb63", width = 2, dash = "dot"),
-               hovertext = ~ paste(sim1, "nitrate concentration:", round(conc1, 1), "ppm"),
-               hoverinfo = "text",
-               legendgroup = "conc1") %>%
-     add_lines(y = ~ net1, name = paste(sim1, "return to N ($/ac)"),
-               line = list(color = "#5dbb63", width = 3, dash = "dashdot"),
-               hovertext = ~ paste(sim1, "return to N:", round(net1, 1), "$/ac"),
-               hoverinfo = "text",
-               legendgroup = "net1") %>%
-     add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
-                 line = list(
-                   color = "#5dbb63"),
-                 fillcolor = "#5dbb63",
-                 hovertext = ~paste(sim1, "yield:", "±", round(yld_stdev1)),
-                 opacity = 0.5,
-                 legendgroup = "yield1", showlegend = FALSE) %>%
-     add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
-                 line = list(
-                   color = "#5dbb63",
-                   width = 0.5,
-                   opacity = 0),
-                 fillcolor = "#5dbb63",
-                 hovertext = ~paste(sim1, "NO3 leach:", "±", round(leach_stdev1)),
-                 opacity = 0.5,
-                 legendgroup = "leach1", showlegend = FALSE) %>%
-     add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
-                 line = list(
-                   color = "#5dbb63",
-                   width = 0.5,
-                   opacity = 0),
-                 hovertext = ~paste(sim1, "NO3 concentration:", "±", round(conc_stdev1)),
-                 fillcolor = "#5dbb63",
-                 opacity = 0.5,
-                 legendgroup = "conc1", showlegend = FALSE)  %>%
-     add_lines(data = modelDF2, y = ~ yield2, name = paste(sim2, "yield (bu/ac)"),
-               line = list(color = "#c99f6e", width = 1, dash = "solid"),
-               hovertext = ~paste(sim2, "yield:",round(yield2, 1), "bu/ac"),
-               hoverinfo = "text",
-               legendgroup = "yield2") %>%
-     add_lines(y = ~ leach2, name = paste(sim2, "NO3 leaching (lb/ac)"),
-               line = list(color = "#c99f6e", width = 1, dash = "dash"),
-               hovertext = ~paste(sim2, "nitrate leaching:",round(leach2, 1), "lbs/ac"),
-               hoverinfo = "text",
-               legendgroup = "leach2") %>%
-     add_lines(y = ~ conc2, name = paste(sim2, "NO3 concentration (ppm)"),
-               line = list(color = "#c99f6e", width = 1, dasy = "dot"),
-               hovertext = ~ paste(sim2, "nitrate concentration:", round(conc2, 1), "ppm"),
-               hoverinfo = "text",
-               legendgroup = "conc2") %>%
-     add_lines(y = ~ net2, name = paste(sim2, "return to N ($/ac)"),
-               line = list(color = "#c99f6e", width = 3, dash = "dashdot"),
-               hovertext = ~ paste(sim2, "return to N:", round(net2, 1), "$/ac"),
-               hoverinfo = "text",
-               legendgroup = "net2") %>%
-     add_ribbons(data = stdev_wide2, ymin = ~ yield2 - yld_stdev2, ymax = ~ yield2 + yld_stdev2,
-                 line = list(
-                   color = "#c99f6e",
-                   width = 0.5,
-                   opacity = 0),
-                 hovertext = ~paste(sim2, "yield:", "±", round(yld_stdev2)),
-                 fillcolor = "#c99f6e",
-                 opacity = 0.5,
-                 legendgroup = "yield2", showlegend = FALSE) %>%
-     add_ribbons(ymin = ~ leach2 - leach_stdev2, ymax = ~ leach2 + leach_stdev2,
-                 line = list(
-                   color = "#c99f6e",
-                   width = 0.5,
-                   opacity = 0),
-                 fillcolor = "#c99f6e",
-                 hovertext = ~paste(sim2, "NO3 leaching:", "±", round(leach_stdev2)),
-                 opacity = 0.5,
-                 legendgroup = "leach2", showlegend = FALSE) %>%
-     add_ribbons(ymin = ~ conc2 - conc_stdev2, ymax = ~ conc2 + conc_stdev2,
-                 line = list(
-                   color = "#c99f6e",
-                   width = 0.5,
-                   opacity = 0),
-                 hovertext = ~paste(sim2, "NO3 concentration:", "±", round(conc_stdev2)),
-                 fillcolor = "#c99f6e",
-                 opacity = 0.5,
-                 legendgroup = "conc2", showlegend = FALSE) %>%
-     add_trace(y = 0,
-               type = 'scatter', mode = 'lines',
-               opacity = 0,
-               hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
-               hoverinfo = "text",
-               showlegend = F) %>%
-     layout(title = "Responses to fertilizer N",
-            xaxis = list(title = "N fertilizer (N lb/ac)"),
-            yaxis = list (title = " "),
-            hovermode = "x unified",
-            legend = list(orientation = 'h',
-                          y = -0.3))
-
- })
-
+  output$plotYieldReturnSim1 <- renderPlotly({
+    
+    req(dat1())
+    
+    data1 <- dat1()[[1]]
+    stdev1 <- dat1()[[2]]
+    
+    plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
+      add_lines(y = ~ yield1, name = "Yield (bu/ac)",
+                yaxis = "y2",
+                line = list(color = "#ff9843", width = 4, dash = "solid"),
+                hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac"),
+                legendgroup = "yield1") %>%
+      add_lines(y = ~ net1, name = "Return to N ($/ac)",
+                line = list(color = "#ff9843", width = 4, dash = "dot"),
+                hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
+                legendgroup = "net1") %>%
+      add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 1,
+                    opacity = 0.5),
+                  fillcolor = "#ff9843",
+                  yaxis = "y2",
+                  hovertext = ~paste("Yield:", "±", round(yld_stdev1)),
+                  opacity = 0.5,
+                  legendgroup = "yield1", showlegend = FALSE) %>%
+      layout(
+        xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+                                  font = list(size = 15))),
+        yaxis = list(title = list(text = "Return to N ($/ac)",
+                                  font = list(size = 15))),
+        yaxis2 = yield_y,
+        hovermode = "x unified",
+        margin = list(r = 50, b = 10, t = 50),
+        legend = list(orientation = 'h', y = -0.5, 
+                      font = list(size = 14))
+        ) 
+    
+  })
+  
+## yield & return to N plot sim2-----------------------------
+  
+  output$plotYieldReturnSim2 <- renderPlotly({
+    
+    sim1 <- input$simSelect1
+    sim2 <- input$simSelect2
+    
+    data1 <- dat1()[[1]]
+    stdev1 <- dat1()[[2]]
+    data2 <- dat2()[[1]]
+    stdev2 <- dat2()[[2]]
+    
+    plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
+      add_lines(y = ~ yield1, name = paste(sim1, "yield (bu/ac)"),
+                yaxis = "y2",
+                line = list(color = "#ff9843", width = 4, dash = "solid"),
+                hovertext = ~ paste(sim1, "yield:",round(yield1, 1), "bu/ac"),
+                legendgroup = "yield1") %>%
+      add_lines(y = ~ net1, name = paste(sim1, "return to N ($/ac)"),
+                line = list(color = "#ff9843", width = 4, dash = "dot"),
+                hovertext = ~ paste(sim1, "Return to N:", round(net1, 1), "$/ac"),
+                legendgroup = "net1") %>%
+      add_ribbons(data = stdev1, x = ~fert, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 1,
+                    opacity = 0.5),
+                  fillcolor = "#ff9843",
+                  yaxis = "y2",
+                  hovertext = ~paste(sim1, "yield:", "±", round(yld_stdev1)),
+                  opacity = 0.5,
+                  legendgroup = "yield1", showlegend = FALSE) %>%
+      add_lines(data = data2, y = ~ yield2, name = paste(sim2, "yield (bu/ac)"),
+                line = list(color = "#3468c0", width = 4, dash = "solid"),
+                hovertext = ~ paste(sim2, "yield:",round(yield2, 1), "bu/ac"),
+                yaxis = "y2",
+                hoverinfo = "text",
+                legendgroup = "yield2") %>%
+      add_lines(y = ~ net2, name = paste(sim2, "return to N ($/ac)"),
+                line = list(color = "#3468c0", width = 4, dash = "dot"),
+                hovertext = ~ paste(sim2, "return to N:", round(net2, 1), "$/ac"),
+                legendgroup = "net2") %>%
+      add_ribbons(data = stdev2, ymin = ~ yield2 - yld_stdev2, ymax = ~ yield2 + yld_stdev2,
+                  line = list(
+                    color = "#3468c0",
+                    width = 5,
+                    opacity = 0.5),
+                  fillcolor = "#3468c0",
+                  opacity = 0.75,
+                  yaxis = "y2",
+                  hovertext = ~paste(sim2, "yield:", "±", round(yld_stdev2)),
+                  legendgroup = "yield2", showlegend = FALSE) %>%
+      layout(
+        xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+                                  font = list(size = 15))),
+        yaxis = list(title = list(text = "Return to N ($/ac)",
+                                  font = list(size = 15))),
+        yaxis2 = yield_y,
+        hovermode = "x unified",
+        margin = list(r = 50, b = 10, t = 50),
+        legend = list(orientation = 'h', y = -0.5, 
+                      font = list(size = 14))) 
+  
+  })  
+  
+  ## yield and leaching plot sim1----------------------
+  
+  output$plotYieldLeachSim1 <- renderPlotly({
+    
+    req(dat1())
+    
+    data1 <- dat1()[[1]]
+    stdev1 <- dat1()[[2]]
+    
+    plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
+      add_lines(y = ~ yield1, name = "Yield (bu/ac)",
+                yaxis = "y2",
+                line = list(color = "#ff9843", width = 4, dash = "solid"),
+                hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac"),
+                legendgroup = "yield1") %>%
+      add_lines(y = ~ leach1, name = "NO3 leaching (lb/ac)",
+                line = list(color = "#ff9843", width = 4, dash = "dot"),
+                hovertext = ~paste("Nitrate leaching:",round(leach1, 1), "lbs/ac"),
+                legendgroup = "leach1") %>%
+      add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#ff9843",
+                  yaxis = "y2",
+                  hovertext = ~paste("Yield: ±", round(yld_stdev1)),
+                  opacity = 0.5,
+                  legendgroup = "yield1", showlegend = FALSE) %>%
+      add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 0.5,
+                    opacity = 0),
+                  hovertext = ~paste("Nitrate leaching: ±", round(leach_stdev1)),
+                  fillcolor = "#ff9843",
+                  opacity = 0.5,
+                  legendgroup = "leach1", showlegend = FALSE) %>%
+      layout(xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+                                       font = list(size = 15))),
+             yaxis = list(title = list(text = "Nitrate leaching (lb/ac)",
+                                       font = list(size = 15))),
+             yaxis2 = yield_y,
+             hovermode = "x unified",
+             margin = list(r = 50, b = 10, t = 50),
+             legend = list(orientation = 'h', y = -0.5, 
+                           font = list(size = 14))) 
+    
+    
+  })
+  
+  ## yield and leaching plot sim2------------
+  
+  output$plotYieldLeachSim2 <- renderPlotly({
+    
+    sim1 <- input$simSelect1
+    sim2 <- input$simSelect2
+    
+    data1 <- dat1()[[1]]
+    stdev1 <- dat1()[[2]]
+    data2 <- dat2()[[1]]
+    stdev2 <- dat2()[[2]]
+    
+    plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
+      add_lines(y = ~ yield1, name = paste(sim1, "yield (bu/ac)"),
+                yaxis = "y2",
+                line = list(color = "#ff9843", width = 4, dash = "solid"),
+                hovertext = ~ paste(sim1, "yield:",round(yield1, 1), "bu/ac"),
+                legendgroup = "yield1") %>%
+      add_lines(y = ~ leach1, name = paste(sim1, "NO3 leaching (lb/ac)"),
+                line = list(color = "#ff9843", width = 4, dash = "dot"),
+                hovertext = ~paste(sim1, "NO3 leaching:",round(leach1, 1), "lbs/ac"),
+                legendgroup = "leach1") %>%
+      add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#ff9843",
+                  yaxis = "y2",
+                  hovertext = ~paste(sim1, "yield: ±", round(yld_stdev1)),
+                  opacity = 0.5,
+                  legendgroup = "yield1", showlegend = FALSE) %>%
+      add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 0.5,
+                    opacity = 0),
+                  hovertext = ~paste(sim1, "NO3 leaching: ±", round(leach_stdev1)),
+                  fillcolor = "#ff9843",
+                  opacity = 0.5,
+                  legendgroup = "leach1", showlegend = FALSE) %>%
+      add_lines(data = data2, y = ~ yield2, name = paste(sim2, "yield (bu/ac)"),
+                line = list(color = "#5dbb63", width = 4, dash = "solid"),
+                hovertext = ~ paste(sim2, "yield:",round(yield2, 1), "bu/ac"),
+                hoverinfo = "text",
+                yaxis = "y2",
+                legendgroup = "yield2") %>%
+      add_lines(y = ~ leach2, name = paste(sim2, "NO3 leaching (lb/ac)"),
+                line = list(color = "#5dbb63", width = 4, dash = "dot"),
+                hovertext = ~ paste(sim2, "NO3 leaching:", round(leach2, 1), "$/ac"),
+                legendgroup = "net2") %>%
+      add_ribbons(data = stdev2,  ymin = ~ yield2 - yld_stdev2, ymax = ~ yield2 + yld_stdev2,
+                  line = list(
+                    color = "#5dbb63",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#5dbb63",
+                  yaxis = "y2",
+                  opacity = 0.5,
+                  hovertext = ~paste(sim2, "yield:", "±", round(yld_stdev2)),
+                  legendgroup = "yield2", showlegend = FALSE) %>%
+      add_ribbons(ymin = ~ leach2 - leach_stdev2, ymax = ~ leach2 + leach_stdev2,
+                  line = list(
+                    color = "#5dbb63",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#5dbb63",
+                  opacity = 0.5,
+                  hovertext = ~paste(sim2, "NO3 leaching: ±", round(leach_stdev2)),
+                  legendgroup = "leach2", showlegend = FALSE) %>%
+      layout(xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+                                       font = list(size = 15))),
+             yaxis = list(title = list(text = "Nitrate leaching (lb/ac)",
+                                       font = list(size = 15))),
+             yaxis2 = yield_y,
+             hovermode = "x unified",
+             margin = list(r = 50, b = 10, t = 50),
+             legend = list(orientation = 'h', y = -0.5, 
+                           font = list(size = 14))) 
+    
+  })
+  
+  ## yield and concentration plot sim1----------------------
+  
+  output$plotYieldConcSim1 <- renderPlotly({
+    
+    req(dat1())
+    
+    data1 <- dat1()[[1]]
+    stdev1 <- dat1()[[2]]
+    
+    plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
+      add_lines(y = ~ yield1, name = "Yield (bu/ac)",
+                yaxis = "y2",
+                line = list(color = "#ff9843", width = 4, dash = "solid"),
+                hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac"),
+                legendgroup = "yield1") %>%
+      add_lines(y = ~ conc1, name = "NO3 Concentration (ppm)",
+                line = list(color = "#ff9843", width = 4, dash = "dot"),
+                hovertext = ~paste("NO3 concentration:",round(conc1, 1), "(ppm)"),
+                legendgroup = "conc1") %>%
+      add_lines(y = 10, name = "Regulatory Standard",
+                line = list(color = "black", width = 4, dash = "solid"),
+                ##TODO hover info shows black line
+                hoverinfo='skip') %>%
+      add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#ff9843",
+                  yaxis = "y2",
+                  hovertext = ~paste("Yield: ±", round(yld_stdev1)),
+                  opacity = 0.5,
+                  legendgroup = "yield1", showlegend = FALSE) %>%
+      add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#ff9843",
+                  hovertext = ~paste("NO3 concentration: ±", round(conc_stdev1)),
+                  opacity = 0.5,
+                  legendgroup = "conc1", showlegend = FALSE) %>%
+      layout(xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+                                       font = list(size = 15))),
+             yaxis = list(title = list(text = "Nitrate concentration (ppm)",
+                                       font = list(size = 15))),
+             yaxis2 = yield_y,
+             hovermode = "x unified",
+             margin = list(r = 50, b = 10, t = 50),
+             legend = list(orientation = 'h', y = -0.5, 
+                           font = list(size = 14))) 
+    
+  })
+  
+  ## yield and concentration plot sim2----------------------
+  
+  output$plotYieldConcSim2 <- renderPlotly({
+    
+    sim1 <- input$simSelect1
+    sim2 <- input$simSelect2
+    
+    data1 <- dat1()[[1]]
+    stdev1 <- dat1()[[2]]
+    data2 <- dat2()[[1]]
+    stdev2 <- dat2()[[2]]
+    
+    plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
+      add_lines(y = ~ yield1, name = paste(sim1, "yield (bu/ac)"),
+                yaxis = "y2",
+                line = list(color = "#ff9843", width = 4, dash = "solid"),
+                hovertext = ~ paste(sim1, "yield:",round(yield1, 1), "bu/ac"),
+                legendgroup = "yield1") %>%
+      add_lines(y = ~ conc1, name = paste(sim1, "NO3 Concentration (ppm)"),
+                line = list(color = "#ff9843", width = 4, dash = "dot"),
+                hovertext = ~paste(sim1, "NO3 concentration:",round(conc1, 1), "(ppm)"),
+                legendgroup = "conc1") %>%
+      add_lines(y = 10, name = "Regulatory Standard",
+                line = list(color = "black", width = 4, dash = "solid"),
+                ##TODO hover info shows black line
+                hoverinfo='skip') %>%
+      add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#ff9843",
+                  yaxis = "y2",
+                  hovertext = ~paste(sim1, "yield: ±", round(yld_stdev1)),
+                  opacity = 0.5,
+                  legendgroup = "yield1", showlegend = FALSE) %>%
+      add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
+                  line = list(
+                    color = "#ff9843",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#ff9843",
+                  hovertext = ~paste(sim1, "NO3 concentration: ±", round(conc_stdev1)),
+                  opacity = 0.5,
+                  legendgroup = "conc1", showlegend = FALSE) %>%
+      add_lines(data = data2, y = ~ yield2, name = paste(sim2, "yield (bu/ac)"),
+                line = list(color = "#593587", width = 3, dash = "solid"),
+                hovertext = ~ paste(sim2, "yield:",round(yield2, 1), "bu/ac"),
+                hoverinfo = "text",
+                yaxis = "y2",
+                legendgroup = "yield2") %>%
+      add_lines(y = ~ conc2, name = paste(sim2, "NO3 concentration (ppm)"),
+                line = list(color = "#593587", width = 3, dash = "dot"),
+                #yaxis = "y2",
+                hovertext = ~ paste(sim2, "NO3 concentration:", round(conc2, 1), "ppm"),
+                legendgroup = "conc2") %>%
+      add_ribbons(data = stdev2, ymin = ~ yield2 - yld_stdev2, ymax = ~ yield2 + yld_stdev2,
+                  line = list(
+                    color = "#593587",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#593587",
+                  yaxis = "y2",
+                  opacity = 0.5,
+                  hovertext = ~paste(sim2, "yield:", "±", round(yld_stdev2)),
+                  legendgroup = "yield2", showlegend = FALSE) %>%
+      add_ribbons(ymin = ~ conc2 - conc_stdev2, ymax = ~ conc2 + conc_stdev2,
+                  line = list(
+                    color = "#593587",
+                    width = 0.5,
+                    opacity = 0),
+                  fillcolor = "#593587",
+                  opacity = 0.5,
+                  hovertext = ~paste(sim2, "NO3 concentration:", "±", round(conc_stdev2)),
+                  legendgroup = "conc2", showlegend = FALSE) %>%
+      layout(xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+                                       font = list(size = 15))),
+             yaxis = list(title = list(text = "Nitrate concentration (ppm)",
+                                       font = list(size = 15))),
+             yaxis2 = yield_y,
+             hovermode = "x unified",
+             margin = list(r = 50, b = 10, t = 50),
+             legend = list(orientation = 'h', y = -0.5, 
+                           font = list(size = 14))) 
+    
+  })
   
   # slider UI--------------
  
@@ -593,8 +770,223 @@ output$values1 <- render_gt({
     selectedPoint()
     dat1()
     dat2()
-    compareDat()
+    #compareDat()
     
   })
 
- }
+}
+
+
+
+## compareDat--------------------
+# compareDat <- reactive({
+#   
+#   req(input$simSelect2)
+#   df1 <- dat1()[[1]]
+#   df2 <- dat2()[[1]]
+#   
+#   compareDat <- left_join(df1, df2) 
+#   print("compareDat")
+#   print(head(compareDat))
+#   
+#   stdev1 <- dat1()[[2]]
+#   stdev2 <- dat2()[[2]]
+#   
+#   compareStdev <- left_join(stdev1, stdev2) 
+#   print("compareDat")
+#   print(head(compareDat))
+#   
+#   stdevCompare 
+#   
+#   
+#   compareDat
+#   
+# })
+
+# ## plot 1--------------------
+# output$plot1 <- renderPlotly({
+#   
+#   req(dat1())
+#   
+#   data1 <- dat1()[[1]]
+#   stdev1 <- dat1()[[2]]
+#   
+#   plot_ly(data1, x = ~fert, hoverinfo = "text") %>%
+#     add_lines(y = ~ yield1, name = "Yield (bu/ac)",
+#               line = list(color = "#5dbb63", width = 2),
+#               hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
+#               legendgroup = "yield") %>%
+#     add_lines(y = ~ leach1, name = "Nitrate leaching (lb/ac)",
+#               line = list(color = "#c99f6e", width = 2),
+#               hovertext = ~ paste("Nitrate leaching:", round(leach1, 1), "lbs/ac"),
+#               legendgroup = "leach") %>%
+#     add_lines(y = ~ conc1, name = "Nitrate concentration (ppm)",
+#               line = list(color = "#6e8fc9", width = 2),
+#               hovertext = ~ paste("Nitrate concentration:", round(conc1, 1), "ppm"),
+#               legendgroup = "conc") %>%
+#     add_lines(y = ~ net1, name = "Return to N ($/ac)",
+#               line = list(color = "black", width = 2.5),
+#               hovertext = ~ paste("Return to N:", round(net1, 1), "$/ac"),
+#               legendgroup = "net") %>%
+#     add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+#                 line = list(
+#                   color = "#5dbb63",
+#                   width = 0.5,
+#                   opacity = 0),
+#                 hovertext = ~paste("yield: ±", round(yld_stdev1)),
+#                 fillcolor = "#5dbb63",
+#                 opacity = 0.5,
+#                 legendgroup = "yield", showlegend = FALSE) %>%
+#     add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
+#                 line = list(
+#                   color = "#c99f6e",
+#                   width = 0.5,
+#                   opacity = 0),
+#                 hovertext = ~paste("nitrate leaching: ±", round(leach_stdev1, 1)),
+#                 fillcolor = "#c99f6e",
+#                 opacity = 0.5,
+#                 legendgroup = "leach", showlegend = FALSE) %>%
+#     add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
+#                 line = list(
+#                   color = "#6e8fc9",
+#                   width = 0.5,
+#                   opacity = 0),
+#                 hovertext = ~paste("nitrate concentration: ±", round(conc_stdev1, 1)),
+#                 fillcolor = "#6e8fc9",
+#                 opacity = 0.5,
+#                 legendgroup = "conc", showlegend = FALSE) %>%
+#     add_trace(y = 0,
+#               type = 'scatter', mode = 'lines',
+#               opacity = 0,
+#               hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
+#               hoverinfo = "text",
+#               showlegend = F) %>%
+#     layout(title = "Responses to fertilizer N",
+#            xaxis = list(title = "N fertilizer (N lb/ac)"),
+#            yaxis = list (title = " "),
+#            hovermode = "x unified",
+#            legend = list(orientation = 'h', y = -0.2))
+#   
+#   
+# })
+# 
+# 
+# ## plot 2--------------------------
+# output$plot2 <- renderPlotly({
+#   
+#   #req(input$simSelect2)
+#   sim1 <- input$simSelect1
+#   sim2 <- input$simSelect2
+#   
+#   data1 <- dat1()[[1]]
+#   stdev1 <- dat1()[[2]]
+#   data2 <- dat2()[[1]]
+#   stdev2 <- dat2()[[2]]
+#   
+#   #print(stdev2)
+#   
+#   ##TODO FIGURE OUT HOW TO REORDER THE HOVER OVERS SO THAT FERT IS ON THE BOTTOM
+#   plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
+#     add_lines(y = ~ yield1, name = paste(sim1, "yield (bu/ac)"),
+#               line = list(color = "#5dbb63", width = 2, dash = "solid"),
+#               hovertext = ~ paste(sim1, "yield:",round(yield1, 1), "bu/ac"),
+#               legendgroup = "yield1") %>%
+#     add_lines(y = ~ leach1, name = paste(sim1, "NO3 leaching (lb/ac)"),
+#               line = list(color = "#5dbb63", width = 2, dash = "dash"),
+#               hovertext = ~paste(sim1, "nitrate leaching:",round(leach1, 1), "lbs/ac"),
+#               legendgroup = "leach1") %>%
+#     add_lines(y = ~ conc1, name = paste(sim1, "NO3 concentration (ppm)"),
+#               line = list(color = "#5dbb63", width = 2, dash = "dot"),
+#               hovertext = ~ paste(sim1, "nitrate concentration:", round(conc1, 1), "ppm"),
+#               legendgroup = "conc1") %>%
+#     add_lines(y = ~ net1, name = paste(sim1, "return to N ($/ac)"),
+#               line = list(color = "#5dbb63", width = 3, dash = "dashdot"),
+#               hovertext = ~ paste(sim1, "return to N:", round(net1, 1), "$/ac"),
+#               legendgroup = "net1") %>%
+#     add_ribbons(data = stdev1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+#                 line = list(
+#                   color = "#5dbb63"),
+#                 fillcolor = "#5dbb63",
+#                 hovertext = ~paste(sim1, "yield:", "±", round(yld_stdev1)),
+#                 opacity = 0.5,
+#                 legendgroup = "yield1", showlegend = FALSE) %>%
+#     add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
+#                 line = list(
+#                   color = "#5dbb63",
+#                   width = 0.5,
+#                   opacity = 0),
+#                 fillcolor = "#5dbb63",
+#                 hovertext = ~paste(sim1, "NO3 leach:", "±", round(leach_stdev1)),
+#                 opacity = 0.5,
+#                 legendgroup = "leach1", showlegend = FALSE) %>%
+#     add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
+#                 line = list(
+#                   color = "#5dbb63",
+#                   width = 0.5,
+#                   opacity = 0),
+#                 hovertext = ~paste(sim1, "NO3 concentration:", "±", round(conc_stdev1)),
+#                 fillcolor = "#5dbb63",
+#                 opacity = 0.5,
+#                 legendgroup = "conc1", showlegend = FALSE)  %>%
+#     add_lines(data = data2, y = ~ yield2, name = paste(sim2, "yield (bu/ac)"),
+#               line = list(color = "#c99f6e", width = 1, dash = "solid"),
+#               hovertext = ~paste(sim2, "yield:",round(yield2, 1), "bu/ac"),
+#               hoverinfo = "text",
+#               legendgroup = "yield2") %>%
+#     add_lines(y = ~ leach2, name = paste(sim2, "NO3 leaching (lb/ac)"),
+#               line = list(color = "#c99f6e", width = 1, dash = "dash"),
+#               hovertext = ~paste(sim2, "nitrate leaching:",round(leach2, 1), "lbs/ac"),
+#               hoverinfo = "text",
+#               legendgroup = "leach2") %>%
+#     add_lines(y = ~ conc2, name = paste(sim2, "NO3 concentration (ppm)"),
+#               line = list(color = "#c99f6e", width = 1, dasy = "dot"),
+#               hovertext = ~ paste(sim2, "nitrate concentration:", round(conc2, 1), "ppm"),
+#               hoverinfo = "text",
+#               legendgroup = "conc2") %>%
+#     add_lines(y = ~ net2, name = paste(sim2, "return to N ($/ac)"),
+#               line = list(color = "#c99f6e", width = 3, dash = "dashdot"),
+#               hovertext = ~ paste(sim2, "return to N:", round(net2, 1), "$/ac"),
+#               hoverinfo = "text",
+#               legendgroup = "net2") %>%
+#     add_ribbons(data = stdev2, ymin = ~ yield2 - yld_stdev2, ymax = ~ yield2 + yld_stdev2,
+#                 line = list(
+#                   color = "#c99f6e",
+#                   width = 0.5,
+#                   opacity = 0),
+#                 hovertext = ~paste(sim2, "yield:", "±", round(yld_stdev2)),
+#                 fillcolor = "#c99f6e",
+#                 opacity = 0.5,
+#                 legendgroup = "yield2", showlegend = FALSE) %>%
+#     add_ribbons(ymin = ~ leach2 - leach_stdev2, ymax = ~ leach2 + leach_stdev2,
+#                 line = list(
+#                   color = "#c99f6e",
+#                   width = 0.5,
+#                   opacity = 0),
+#                 fillcolor = "#c99f6e",
+#                 hovertext = ~paste(sim2, "NO3 leaching:", "±", round(leach_stdev2)),
+#                 opacity = 0.5,
+#                 legendgroup = "leach2", showlegend = FALSE) %>%
+#     add_ribbons(ymin = ~ conc2 - conc_stdev2, ymax = ~ conc2 + conc_stdev2,
+#                 line = list(
+#                   color = "#c99f6e",
+#                   width = 0.5,
+#                   opacity = 0),
+#                 hovertext = ~paste(sim2, "NO3 concentration:", "±", round(conc_stdev2)),
+#                 fillcolor = "#c99f6e",
+#                 opacity = 0.5,
+#                 legendgroup = "conc2", showlegend = FALSE) %>%
+#     add_trace(y = 0,
+#               type = 'scatter', mode = 'lines',
+#               opacity = 0,
+#               hovertext = ~ paste("N fert rate:",fert, "lbs N/ac"),
+#               hoverinfo = "text",
+#               showlegend = F) %>%
+#     layout(title = "Responses to fertilizer N",
+#            xaxis = list(title = "N fertilizer (N lb/ac)"),
+#            yaxis = list (title = " "),
+#            hovermode = "x unified",
+#            legend = list(orientation = 'h',
+#                          y = -0.3))
+#   
+# })
+

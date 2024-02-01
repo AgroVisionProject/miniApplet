@@ -179,6 +179,18 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   
 }
 
+# plot bones-----------------------
+
+yield_y <- list(
+  tickfont = list(color = "black"),
+  overlaying = "y",
+  side = "right",
+  title = list(text = "Yield (bu/ac)",
+               font = list(size = 15),
+               standoff = 10L)
+)
+
+
 # test data set----------------
 
 # yield_df_sum <- yield_df %>%

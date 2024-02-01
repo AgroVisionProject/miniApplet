@@ -8,8 +8,9 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(tags$h4("To view site specific corn yield and nitrate leaching responses to fertilizer N:"),
                  tags$li("Click on your state"),
-                 tags$li("then your county"),
-                 tags$li("then the site marker"),
+                 tags$li("Then, click on your county"),
+                 tags$li("Then, click on the site marker"),
+                 tags$li("Then, view results"),
                  br(),
                  actionButton("reset", "Clear locations"),
                  hr(),
@@ -36,7 +37,7 @@ ui <- fluidPage(
               #                 )),
               br(),
               #uiOutput("econPlotUI"),
-              uiOutput("plotUI"),
+              uiOutput("plotUI")
               # br(),
               # helpText("Click on legend items to add or remove variables from plot")
               
