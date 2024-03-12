@@ -7,6 +7,7 @@ library(plotly)
 library(gt)
 library(reactlog)
 library(shinyjs)
+library(shinycssloaders)
 
 
 
@@ -14,22 +15,44 @@ reactlog_enable()
 
 # load shapefiles
 states = st_read("data/ncr_states_simple.shp")
-counties = st_read("data/ncr_counties_simple.shp")
+counties = st_read("data/ncr_counties_simple.shp") %>%
+  mutate(id = paste0(STATEFP, COUNTYFP))
+
+county_centroids = counties %>% 
+  select(id, geometry) %>% 
+  st_centroid() %>%
+  mutate(
+    lat = st_coordinates(.)[,2],
+    lon = st_coordinates(.)[,1]
+  ) %>%
+  st_drop_geometry() %>%
+  arrange(id)
 
 
 # load data-----------------
-leach_df <- read_csv("data/leachData.csv")
-yield_df <- read_csv("data/yieldData.csv")
-conc_df <- read_csv("data/concData.csv")
+# leach_df <- read_csv("data/leachData.csv")
+# yield_df <- read_csv("data/yieldData.csv")
+# conc_df <- read_csv("data/concData.csv")
 
-sim1Var <- read_csv("data/sim1_SD.csv")
-sim2Var <- read_csv("data/sim2_SD.csv")
-sim3Var <- read_csv("data/sim3_SD.csv")
-sim4Var <- read_csv("data/sim4_SD.csv")
+# sim1Var <- read_csv("data/sim1_SD.csv")
+# sim2Var <- read_csv("data/sim2_SD.csv")
+# sim3Var <- read_csv("data/sim3_SD.csv")
+# sim4Var <- read_csv("data/sim4_SD.csv")
+# 
+# sim1_wetDry <- read.csv("data/sim1wet_dry.csv")
+# sim2_wetDry <- read.csv("data/sim2wet_dry.csv")
+# sim3_wetDry <- read.csv("data/sim3wet_dry.csv")
+# sim4_wetDry <- read.csv("data/sim4wet_dry.csv")
 
-sites <- read_csv("data/sampleSites.csv")
+sites <- read_csv("data/sampleSites.csv") %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
+  mutate(id = row_number(), .before = 1)
+
 sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
 simNames = sims$cropSystem
+
+soilLayer <- read_csv("data/soilText.csv")
+soilClass <- read_csv("data/soilClasses.csv")
 
 # define fertilizer/x axis----------
 fert = seq(from = 0, to = 350, by = 1) #kg/ha
@@ -41,20 +64,21 @@ kgha_to_lbac <- function(x) {
 
 # map function------------
 
-base_map <- function() {
-  leaflet() %>%
-    addTiles() %>%
-    addPolygons(data = states,
-                group = "state",
-                col = "blue",
-                layerId = ~state) %>%
-    addPolygons(data = counties,
-                group = "county",
-                col = "darkgreen") %>%
-    groupOptions("state", zoomLevels = 1:9) %>%
-    groupOptions("county", zoomLevels = 7:10) %>%
-    addProviderTiles("Esri.WorldTopoMap")
-}
+# base_map <- function() {
+#   leaflet() %>%
+#     addTiles() %>%
+#     addPolygons(data = states,
+#                 group = "state",
+#                 col = "blue",
+#                 layerId = ~state) %>%
+#     addPolygons(data = counties,
+#                 group = "county",
+#                 col = "darkgreen") %>%
+#     ##TODO should I make it so the zoomlevels don't overlap
+#     groupOptions("state", zoomLevels = 1:9) %>%
+#     groupOptions("county", zoomLevels = 7:10) %>%
+#     addProviderTiles("Esri.WorldTopoMap")
+# }
 
 
 # determine response curve--------
@@ -92,18 +116,26 @@ responseCurve <- function(dataframe, fun) {
 makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   #makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, cornTech, fertEff) {
   
-  ##TODO go back to joining by fert as assigned above. this will help with the slide vals and the compareDat
+ 
   req(is.na(simulation) == FALSE)
   
-  if(simulation == 1) {var = sim1Var}
-  if(simulation == 2) {var = sim2Var}
-  if(simulation == 3) {var = sim3Var}
-  if(simulation == 4) {var = sim4Var}
+  datExtras <- list()
+  if(simulation == 1) {datExtras = list(var = sim1Var, wetDry = sim1_wetDry)}
+  if(simulation == 2) {datExtras = list(var = sim2Var, wetDry = sim2_wetDry)}
+  if(simulation == 3) {datExtras = list(var = sim3Var, wetDry = sim3_wetDry)}
+  if(simulation == 4) {datExtras = list(var = sim4Var, wetDry = sim4_wetDry)}
   
-  var <- var %>%
+  var <- datExtras$var %>%
     #mutate(meanFert = round(meanFert)) %>%
     filter(lat == site_lat,
            lon == site_lon)
+  
+  wetDry <- datExtras$wetDry %>%
+    filter(lat.sims == site_lat,
+           lon.sims == site_lon)
+
+  # print("head wet dry")
+  # print(head(wetDry))
   
   #print("head var")
   #print(head(var))
@@ -126,6 +158,13 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   yieldFun <- yield_df_sum$fun
   leachFun <- leach_df_sum$fun
   concFun <- conc_df_sum$fun
+  
+  texture <- left_join(yield_df_sum, soilLayer)
+  #print(texture)
+  
+  ##TODO determine fert recommendation
+  ##TODO which soil layer should we use in the rec?
+  ##TODO should we use different recs for different states?
 
   #fertOrder <- unique(sort(var$meanFert))
   #print("fert")
@@ -151,7 +190,7 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   modelDF <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y), concentration = conc_y,
              net = net) %>%
     arrange(fert)
-  print(nrow(modelDF))
+  #print(nrow(modelDF))
 
   #print(modelDF)
 
@@ -160,13 +199,13 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
     mutate(fert = round(fertilizerLbsAc))
    
   # join modeled DF and variance 
-  model_var <- left_join(modelDF, var) 
+  model_var <- left_join(modelDF, var, relationship = "many-to-many") 
   
   # modelDF max fert should be var max fert
   maxFert <- max(var$fert)
   modelDF <- filter(modelDF, fert < maxFert)
-  print(maxFert)
-  print(nrow(modelDF))
+  #print(maxFert)
+  #print(nrow(modelDF))
   
   # create stdev column for each variable
   stdev_wide <- model_var %>%
@@ -175,7 +214,7 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   #print("stdev_wide")
   #print(stdev_wide)
 
-  return(list(modelDF, stdev_wide))
+  return(list(modelDF, stdev_wide, texture, wetDry))
   
 }
 
@@ -190,6 +229,38 @@ yield_y <- list(
                standoff = 10L)
 )
 
+base_plot <- function(data, stdev, yaxislabel) {
+  
+  plot_ly(data = data, x = ~fert, hoverinfo = "text") %>%
+    add_lines(y = ~ yield1, name = "Yield (bu/ac)",
+              yaxis = "y2",
+              line = list(color = "#ff9843", width = 4, dash = "solid"),
+              hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac"),
+              legendgroup = "yield1") %>%
+    add_ribbons(data = stdev, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+                line = list(
+                  color = "#ff9843",
+                  width = 1,
+                  opacity = 0.5),
+                fillcolor = "#ff9843",
+                yaxis = "y2",
+                hovertext = ~paste("±", round(yld_stdev1)),
+                opacity = 0.5,
+                legendgroup = "yield1", showlegend = FALSE) %>%
+    layout(
+      xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+                                font = list(size = 15))),
+      yaxis = yaxislabel,
+      yaxis2 = yield_y,
+      hovermode = "x unified",
+      margin = list(r = 50, b = 10, t = 50),
+      legend = list(orientation = 'h', y = -0.5, 
+                    font = list(size = 14))
+    ) 
+  
+}
+ 
+
 
 # test data set----------------
 
@@ -197,20 +268,25 @@ yield_y <- list(
 #   filter(sim == 1,
 #          STATE_NAME == "Wisconsin",
 #          NAME == "Dane") %>%
-#   slice(1)
-# 
+#   slice(15)
+#  
+# yield_df_sum
+# # 
+# texture1 <- left_join(yield_df_sum, soilLayer)
+# texture1
+# # # 
 # leach_df_sum <- leach_df %>%
 #   filter(sim == 1,
 #          STATE_NAME == "Wisconsin",
 #          NAME == "Dane") %>%
-#   slice(1)
-# 
+#   slice(15)
+#
 # conc_df_sum <- conc_df %>%
 #   filter(sim == 1,
 #          STATE_NAME == "Wisconsin",
 #          NAME == "Dane") %>%
-#   slice(1)
-# 
+#   slice(15)
+#
 # yieldFun <- yield_df_sum$fun
 # leachFun <- leach_df_sum$fun
 # concFun <- conc_df_sum$fun
@@ -218,8 +294,8 @@ yield_y <- list(
 # var <- sim1Var %>%
 #   filter(lat == yield_df_sum$lat,
 #          lon == yield_df_sum$lon)
-# 
-# 
+
+
 # yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
 # leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
 # conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun)
@@ -236,9 +312,9 @@ yield_y <- list(
 # modelDF1 <- data.frame(fert = round(kgha_to_lbac(fert)), yield1 = yield_y,
 #                       leach1 = kgha_to_lbac(leach_y), conc1 = conc_y,
 #                       net1 = net)
-# 
-# # modelDF
-# 
+
+# modelDF
+
 # var1 <- var %>%
 #   select(c(stdev, variable, fertilizerLbsAc, meanFert)) %>%
 #   mutate(fert = round(fertilizerLbsAc))
