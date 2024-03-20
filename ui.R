@@ -17,7 +17,9 @@ ui <- fluidPage(
                  uiOutput("simSelectionUI"),
                  uiOutput("pricesUI"),
                  uiOutput("sliderUI")),
-    mainPanel(leafletOutput("map"),
+    mainPanel(leafletOutput("map") %>%
+                withSpinner(type = 3,
+                            color.background = "white"),
               br(),
               br(),
               uiOutput("plotUI")

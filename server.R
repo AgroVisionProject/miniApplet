@@ -1,23 +1,6 @@
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
   
-  # map -----------------------
-  # base_map <- function() {
-  #   leaflet() %>%
-  #     addTiles() %>%
-  #     addPolygons(data = states,
-  #                 group = "state",
-  #                 col = "blue",
-  #                 layerId = ~state) %>%
-  #     addPolygons(data = counties,
-  #                 group = "county",
-  #                 col = "darkgreen") %>%
-  #     groupOptions("state", zoomLevels = 1:9) %>%
-  #     groupOptions("county", zoomLevels = 7:10) %>%
-  #     addProviderTiles("Esri.WorldTopoMap")
-  # }
-
-  
   # reactiveVal for the map object, and corresponding output object.
   react_map <- reactiveVal(base_map())
   
@@ -28,74 +11,61 @@ server <- function(input, output, session) {
     react_map()
   })
   
- 
-  stateSites <- reactiveValues()
-  stateSites$df <- data.frame()
-  #countySites <- reactiveVal()
-  
   observeEvent(input$map_shape_click, {
     
-    print("map click")
-    # open map to country view 
-    p <- input$map_shape_click # get input value
-    if (is.null(p))  
-      return()
+    click <- input$map_shape_click
+    #print(click)
     
-    # zoom to state view
-    if(p$group == "state") {
-     
+    if (click$group == "state") {
+      
+      state <- states %>% filter(state == click$id)
+      lat <- as.numeric(state$stateLat)
+      lon <- as.numeric(state$stateLin)
       leafletProxy("map") %>%
-        setView(lat = p$lat, lng = p$lng, zoom = 7)
+        setView(lat = lat, lng = lon, zoom = 8)
+      #return()
       
-      # subset sites to state
-      stateSites$df <- sites %>%
-        filter(state == p$id)
-      
-    }
+    } 
     
-    #zoom to county view with marker points
-    if(p$group == "county") {
+    if (click$group == "county") {
       
-      # county map with observation sites
+      county = county_centroids %>% filter(id == click$id)
+      #print(county)
+      
       leafletProxy("map") %>%
-        addCircleMarkers(data = stateSites$df,
-                         lat = ~lat, lng = ~lon,
-                         group = "sites") %>%
-        setView(lat = p$lat, lng = p$lng, zoom = 10) 
-      
-    }
+        setView(
+          lat = county$lat,
+          lng = county$lon,
+          zoom = 10
+        )
+    } 
     
   })
   
-  # selected point----------------
-  #selectedPoint <- reactiveValues(lat = NULL, lon = NULL)
-  #point <- reactiveVal()
-  selectedPoint <- reactiveVal()
-  vals <- reactiveValues(count = 0)
+  
+  # selected site----------------
+  selectedSite <- reactiveVal()
   
   observeEvent(input$map_marker_click, {
     
-    print("selected point")
-    
     click <- input$map_marker_click
-    lat <- click$lat
-    #print(lat)
-    lon <- click$lng
-    #print(lon)
+    print(click)
+    site <- sites %>% filter(id == click$id)
+    selectedSite(site)
     
-    selectedPoint(
-    list(lat = lat, lon = lon)
-    )
-    # selectedPoint$lat <- lat
-    # selectedPoint$lon <- lon
+  })
+  
+  observeEvent(input$map_marker_click, {
     
-    vals$count <- vals$count + 1
-
-    # zoom to site
+    req(selectedSite())
+    
     leafletProxy("map") %>%
-      setView(lng = lon, lat = lat, zoom = 12) %>%
-      clearGroup("sampleSite") %>%
-      addMarkers(lng = lon, lat = lat, group = "sampleSite")
+      clearGroup("cur_site") %>%
+      addMarkers(
+        data = selectedSite(), 
+        lat = ~selectedSite()$lat, lng = ~selectedSite()$lon,
+        group = "cur_site"
+      )
     
   })
   
@@ -103,12 +73,7 @@ server <- function(input, output, session) {
   
   output$simSelectionUI <- renderUI({
 
-    #req(selectedPoint()$lat)
-    #req(selectedPoint())
-    #req(input$map_marker_click)
-    req(vals$count >= 1)
-
-    #print("inside render selection")
+    req(selectedSite())
 
     tagList(
       uiOutput("select1"),
@@ -148,7 +113,8 @@ server <- function(input, output, session) {
   
   output$pricesUI <- renderUI({
     
-    req(vals$count >= 1)
+    req(selectedSite())
+    #req(vals$count >= 1)
     
     fluidRow(column(6,
                     numericInput("cornPrice", "Price of corn ($/bu)", value = 5, min = 1, max = 20)
@@ -165,14 +131,14 @@ server <- function(input, output, session) {
   ## data1----------------
   dat1 <- reactive({
     
-    #req(selectedPoint())
+    req(selectedSite())
     req(input$simSelect1)
     req(input$cornPrice)
     req(input$fertPrice)
     #print("inside dat 1")
     
-    site_lat <- selectedPoint()$lat
-    site_lon <- selectedPoint()$lon
+    site_lat <- selectedSite()$lat
+    site_lon <- selectedSite()$lon
     cornPrice <- input$cornPrice
     fertPrice <- input$fertPrice
     # NUE <- input$NUE
@@ -208,11 +174,11 @@ server <- function(input, output, session) {
   ## data2---------------------------
   dat2 <- reactive({
     
-    #req(selectedPoint())
+    req(selectedSite())
     req(input$simSelect2)
     
-    site_lat <- selectedPoint()$lat
-    site_lon <- selectedPoint()$lon
+    site_lat <- selectedSite()$lat
+    site_lon <- selectedSite()$lon
     cornPrice <- input$cornPrice
     fertPrice <- input$fertPrice
     #NUE <- input$NUE
@@ -251,35 +217,26 @@ server <- function(input, output, session) {
 
     req(input$simSelect1)
     #req(dat1())
-    req(vals$count >= 1)
+    #req(dat2())
+    #req(vals$count >= 1)
     req(input$simSelect2)
+    req(selectedSite())
     
     sim1 <- str_to_title(input$simSelect1)
     sim2 <- str_to_title(input$simSelect2)
     if(input$simSelect2 == "None") {
       title <- paste("Responses to Fertilizer N (30 year average) in", sim1)
-    } else {
-      title <- paste("Responses to Fertilizer N (30 year average) in", sim1, "and", sim2)
-    }
-
-    plot <- c()
-    if(input$simSelect2 == "None") {
-      
       plotYldAndRtN <- plotlyOutput('plotYieldReturnSim1')
       plotYldAndLeach <- plotlyOutput('plotYieldLeachSim1')
       plotYldAndConc <- plotlyOutput('plotYieldConcSim1')
-      
-      }
-    if(input$simSelect2 != "None") {
-
+    } else {
+      title <- paste("Responses to Fertilizer N (30 year average) in", sim1, "and", sim2)
       plotYldAndRtN <- plotlyOutput('plotYieldReturnSim2')
       plotYldAndLeach <- plotlyOutput('plotYieldLeachSim2')
       plotYldAndConc <- plotlyOutput('plotYieldConcSim2')
-
-      }
+    }
 
     tagList(
-      #plot,
       tags$h4(title),
       tabsetPanel(
         tabPanel("Yield and Return to N",
@@ -692,8 +649,9 @@ server <- function(input, output, session) {
  
   output$sliderUI <- renderUI({
     
-    req(vals$count >= 1)
+    #req(vals$count >= 1)
     req(input$simSelect1)
+    req(selectedSite())
   
     tagList(
       uiOutput("values1"),
@@ -772,13 +730,10 @@ output$values1 <- render_gt({
   # reset vals---------------
   observeEvent(input$reset, {
     # reset the map
-    react_map(base_map())
-    vals$count = 0
-    # resets the points
-    selectedPoint()
-    dat1()
-    dat2()
-    #compareDat()
+    leafletProxy("map") %>%
+      clearGroup("cur_site") %>%
+      setView(lat = 41.5, lng = -93.5, zoom = 4) 
+    selectedSite(NULL)
     
   })
 

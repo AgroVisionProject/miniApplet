@@ -7,29 +7,54 @@ library(plotly)
 library(gt)
 library(reactlog)
 library(shinyjs)
-
+library(shinycssloaders)
 
 
 reactlog_enable()
 
 # load shapefiles
 states = st_read("data/ncr_states_simple.shp")
-counties = st_read("data/ncr_counties_simple.shp")
+counties = st_read("data/ncr_counties_simple.shp") %>%
+  mutate(id = paste0(STATEFP, COUNTYFP))
+
+county_centroids = counties %>% 
+  select(id, geometry) %>% 
+  st_centroid() %>%
+  mutate(
+    lat = st_coordinates(.)[,2],
+    lon = st_coordinates(.)[,1]
+  ) %>%
+  st_drop_geometry() %>%
+  arrange(id)
 
 
+##TODO save as csv.gz
 # load data-----------------
-leach_df <- read_csv("data/leachData.csv")
-yield_df <- read_csv("data/yieldData.csv")
-conc_df <- read_csv("data/concData.csv")
+leach_df <- read_csv("data/leachData.csv.gz")
+yield_df <- read_csv("data/yieldData.csv.gz")
+conc_df <- read_csv("data/concData.csv.gz")
 
-sim1Var <- read_csv("data/sim1_SD.csv")
-sim2Var <- read_csv("data/sim2_SD.csv")
-sim3Var <- read_csv("data/sim3_SD.csv")
-sim4Var <- read_csv("data/sim4_SD.csv")
+sim1Var <- read_csv("data/sim1_SD.csv.gz")
+sim2Var <- read_csv("data/sim2_SD.csv.gz")
+sim3Var <- read_csv("data/sim3_SD.csv.gz")
+sim4Var <- read_csv("data/sim4_SD.csv.gz")
 
-sites <- read_csv("data/sampleSites.csv")
+sim1wetdry <- read_csv("data/sim1wetdry.csv.gz")
+sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
+sim3wetdry <- read_csv("data/sim3wetdry.csv.gz")
+sim4wetdry <- read_csv("data/sim4wetdry.csv.gz")
+
+sites <- read_csv("data/sampleSites.csv.gz") %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
+  mutate(id = row_number(), .before = 1)
+
 sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
 simNames = sims$cropSystem
+
+soil <- read_csv("data/soilText.csv.gz") 
+soil_csv <- read_csv("data/soilClasses.csv")
+
+gdd <- read_csv("data/GDD.csv_gz")
 
 # define fertilizer/x axis----------
 fert = seq(from = 0, to = 350, by = 1) #kg/ha
@@ -44,16 +69,31 @@ kgha_to_lbac <- function(x) {
 base_map <- function() {
   leaflet() %>%
     addTiles() %>%
+    addMapPane("states", 451) %>%
+    addMapPane("counties", 452) %>%
+    addMapPane("sites", 453) %>%
     addPolygons(data = states,
                 group = "state",
                 col = "blue",
-                layerId = ~state) %>%
+                layerId = ~state,
+                options = pathOptions(pane = "states")) %>%
     addPolygons(data = counties,
                 group = "county",
-                col = "darkgreen") %>%
-    groupOptions("state", zoomLevels = 1:9) %>%
-    groupOptions("county", zoomLevels = 7:10) %>%
-    addProviderTiles("Esri.WorldTopoMap")
+                col = "darkgreen",
+                layerId = ~id,
+                options = pathOptions(pane = "counties")) %>%
+    addCircleMarkers(
+      data = sites,
+      lat = ~lat, lng = ~lon,
+      layerId = ~id,
+      group = "sites", 
+      options = pathOptions(pane = "sites")
+    ) %>%
+    groupOptions("state", zoomLevels = 1:8) %>%
+    groupOptions("county", zoomLevels = 8:14) %>%
+    groupOptions("sites", zoomLevels = 9:14) %>%
+    setView(lat = 41.5, lng = -93.5, zoom = 4) %>%
+    addProviderTiles("Esri.WorldTopoMap") 
 }
 
 
@@ -91,8 +131,6 @@ responseCurve <- function(dataframe, fun) {
 
 makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   #makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, cornTech, fertEff) {
-  
-  ##TODO go back to joining by fert as assigned above. this will help with the slide vals and the compareDat
   req(is.na(simulation) == FALSE)
   
   if(simulation == 1) {var = sim1Var}
@@ -151,7 +189,7 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   modelDF <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y), concentration = conc_y,
              net = net) %>%
     arrange(fert)
-  print(nrow(modelDF))
+  #print(nrow(modelDF))
 
   #print(modelDF)
 
@@ -160,13 +198,13 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
     mutate(fert = round(fertilizerLbsAc))
    
   # join modeled DF and variance 
-  model_var <- left_join(modelDF, var) 
+  model_var <- left_join(modelDF, var, relationship = "many-to-many") 
   
   # modelDF max fert should be var max fert
   maxFert <- max(var$fert)
   modelDF <- filter(modelDF, fert < maxFert)
-  print(maxFert)
-  print(nrow(modelDF))
+  #print(maxFert)
+  #print(nrow(modelDF))
   
   # create stdev column for each variable
   stdev_wide <- model_var %>%
