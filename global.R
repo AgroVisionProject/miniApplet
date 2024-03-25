@@ -34,10 +34,10 @@ leach_df <- read_csv("data/leachData.csv.gz")
 yield_df <- read_csv("data/yieldData.csv.gz")
 conc_df <- read_csv("data/concData.csv.gz")
 
-sim1Var <- read_csv("data/sim1_SD.csv.gz")
-sim2Var <- read_csv("data/sim2_SD.csv.gz")
-sim3Var <- read_csv("data/sim3_SD.csv.gz")
-sim4Var <- read_csv("data/sim4_SD.csv.gz")
+#sim1Var <- read_csv("data/sim1_SD.csv.gz")
+#sim2Var <- read_csv("data/sim2_SD.csv.gz")
+#sim3Var <- read_csv("data/sim3_SD.csv.gz")
+#sim4Var <- read_csv("data/sim4_SD.csv.gz")
 
 sim1wetdry <- read_csv("data/sim1wetdry.csv.gz")
 sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
@@ -129,19 +129,30 @@ responseCurve <- function(dataframe, fun) {
 
 # make data frame----------------------
 
-makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
+makeDF <- function(simulation, site_lat, site_lon) {
   #makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, cornTech, fertEff) {
   req(is.na(simulation) == FALSE)
   
-  if(simulation == 1) {var = sim1Var}
-  if(simulation == 2) {var = sim2Var}
-  if(simulation == 3) {var = sim3Var}
-  if(simulation == 4) {var = sim4Var}
+  # if(simulation == 1) {var = sim1Var}
+  # if(simulation == 2) {var = sim2Var}
+  # if(simulation == 3) {var = sim3Var}
+  # if(simulation == 4) {var = sim4Var}
   
-  var <- var %>%
+  if(simulation == 1) {wetDry = sim1wetdry}
+  if(simulation == 2) {wetDry = sim2wetdry}
+  if(simulation == 3) {wetDry = sim3wetdry}
+  if(simulation == 4) {wetDry = sim4wetdry}
+  
+  # var <- var %>%
+  #   #mutate(meanFert = round(meanFert)) %>%
+  #   filter(lat == site_lat,
+  #          lon == site_lon)
+  
+  wetDry <- wetDry %>%
     #mutate(meanFert = round(meanFert)) %>%
-    filter(lat == site_lat,
-           lon == site_lon)
+    filter(lat.sims == site_lat,
+           lon.sims == site_lon)
+  
   
   #print("head var")
   #print(head(var))
@@ -151,19 +162,19 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
            lat == site_lat,
            lon == site_lon)
 
-  leach_df_sum <- leach_df %>%
-    filter(sim == simulation,
-           lat == site_lat,
-           lon == site_lon)
-
-  conc_df_sum <- conc_df %>%
-    filter(sim == simulation,
-           lat == site_lat,
-           lon == site_lon)
+  # leach_df_sum <- leach_df %>%
+  #   filter(sim == simulation,
+  #          lat == site_lat,
+  #          lon == site_lon)
+  # 
+  # conc_df_sum <- conc_df %>%
+  #   filter(sim == simulation,
+  #          lat == site_lat,
+  #          lon == site_lon)
 
   yieldFun <- yield_df_sum$fun
-  leachFun <- leach_df_sum$fun
-  concFun <- conc_df_sum$fun
+  # leachFun <- leach_df_sum$fun
+  # concFun <- conc_df_sum$fun
 
   #fertOrder <- unique(sort(var$meanFert))
   #print("fert")
@@ -173,49 +184,68 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   #print(yield_y)
   # corn yield improvements
   #yield_new <- yield_y * cornTech
-  leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
+  #leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
   #print(leach_y)
   # nitrogen use improvements
   #leach_new <- leach_y * fertEff
-  conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun)
+  #conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun)
   #print(conc_y)
 
-  cornVal <- (yield_y - yield_y[1]) * cornPrice
-  fertCost <- round(kgha_to_lbac(fert)) * fertPrice
-  NUE <- 0.5
-  nloss <- NUE * leach_y * fertPrice
-  net <- cornVal - fertCost - nloss
+  # cornVal <- (yield_y - yield_y[1]) * cornPrice
+  # fertCost <- round(kgha_to_lbac(fert)) * fertPrice
+  # NUE <- 0.5
+  # nloss <- NUE * leach_y * fertPrice
+  # net <- cornVal - fertCost - nloss
 
-  modelDF <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y), concentration = conc_y,
-             net = net) %>%
+  data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y) %>%
     arrange(fert)
   #print(nrow(modelDF))
 
   #print(modelDF)
 
-  var <- var %>%
-    select(c(stdev, variable, fertilizerLbsAc)) %>%
-    mutate(fert = round(fertilizerLbsAc))
+  # var <- var %>%
+  #   select(c(stdev, variable, fertilizerLbsAc)) %>%
+  #   mutate(fert = round(fertilizerLbsAc))
    
   # join modeled DF and variance 
-  model_var <- left_join(modelDF, var, relationship = "many-to-many") 
+  #model_var <- left_join(modelDF, var, relationship = "many-to-many") 
   
-  # modelDF max fert should be var max fert
-  maxFert <- max(var$fert)
-  modelDF <- filter(modelDF, fert < maxFert)
-  #print(maxFert)
-  #print(nrow(modelDF))
-  
-  # create stdev column for each variable
-  stdev_wide <- model_var %>%
-    drop_na(stdev) %>%
-    pivot_wider(values_from = stdev, names_from = "variable", names_prefix = "stdev_")
-  #print("stdev_wide")
-  #print(stdev_wide)
+  # # modelDF max fert should be var max fert
+  # maxFert <- max(var$fert)
+  # modelDF <- filter(modelDF, fert < maxFert)
+  # #print(maxFert)
+  # #print(nrow(modelDF))
+  # 
+  # # create stdev column for each variable
+  # stdev_wide <- model_var %>%
+  #   drop_na(stdev) %>%
+  #   pivot_wider(values_from = stdev, names_from = "variable", names_prefix = "stdev_")
+  # #print("stdev_wide")
+  # #print(stdev_wide)
 
-  return(list(modelDF, stdev_wide))
+  #return(modelDF)
   
 }
+
+makeWetDryDF <- function(simulation, site_lat, site_lon) {
+  #makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, cornTech, fertEff) {
+  req(is.na(simulation) == FALSE)
+  
+  if(simulation == 1) {wetDry = sim1wetdry}
+  if(simulation == 2) {wetDry = sim2wetdry}
+  if(simulation == 3) {wetDry = sim3wetdry}
+  if(simulation == 4) {wetDry = sim4wetdry}
+  
+  wetDry <- wetDry %>%
+    #mutate(meanFert = round(meanFert)) %>%
+    filter(lat.sims == site_lat,
+           lon.sims == site_lon)
+  
+ 
+  return(wetDry)
+  
+}
+
 
 # plot bones-----------------------
 
@@ -228,6 +258,60 @@ yield_y <- list(
                standoff = 10L)
 )
 
+makeYldplot <- function(simDat, wetDryDat, wet = "none", dry = "none") {
+  
+  base_plot <- plot_ly(data = simDat, x = ~fert, hoverinfo = "text") %>%
+    add_lines(y = ~ yield1, name = "Yield (bu/ac)",
+              line = list(color = "#ff9843", width = 4, dash = "solid"),
+              hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac")) %>%
+    layout(
+      xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+                                font = list(size = 15))),
+      yaxis = list(title = list(text = "Yield (bu/ac)",
+                                font = list(size = 15))),
+      hovermode = "x unified",
+      margin = list(r = 50, b = 10, t = 50),
+      legend = list(orientation = 'h', y = -0.5,
+                    font = list(size = 14))
+    )  
+  
+  # return base plot if wet and dry are null
+  #if(is.null(wet) & is.null(dry)) {
+  if(wet == "none" & dry == "none") {
+    print("base")
+    plt <- base_plot
+  } else if (wet == "wet" & dry == "none") { # return base plot plus wet if wet is checked
+    print(paste("wet", is.null(wet)))
+    plt <- base_plot %>%
+      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~wetYield,
+                line = list(color = "blue", width = 4, dash = "solid"),
+                hovertext = ~ paste("Wet yield:",round(wetYield, 1), "bu/ac"))
+  } else if (wet == "none" & dry == "dry") { # return base plot plus dry if dry is checked
+    print("dry")
+    plt <- base_plot %>%
+      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~dryYield,
+                line = list(color = "yellow", width = 4, dash = "solid"),
+                hovertext = ~ paste("Dry yield:",round(wetYield, 1), "bu/ac"))
+  } else { # both are checked
+    print("both")
+    plt <- base_plot %>%
+      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~dryYield,
+                line = list(color = "yellow", width = 4, dash = "solid"),
+                hovertext = ~ paste("Dry yield:",round(wetYield, 1), "bu/ac")) %>%
+      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~wetYield,
+                line = list(color = "blue", width = 4, dash = "solid"),
+                hovertext = ~ paste("Wet yield:",round(wetYield, 1), "bu/ac"))
+  }
+ 
+  plt
+  
+}
+
+
+# makeYldplot(simDat = simData, wetDryDat = wetDryData)
+# makeYldplot(simDat = simData, wetDryDat = wetDryData, dry = "dry")
+# makeYldplot(simDat = simData, wetDryDat = wetDryData, wet = "wet")
+# makeYldplot(simDat = simData, wetDryDat = wetDryData, wet = "wet", dry = "dry")
 
 # test data set----------------
 
@@ -249,7 +333,7 @@ yield_y <- list(
 #          NAME == "Dane") %>%
 #   slice(1)
 # 
-# yieldFun <- yield_df_sum$fun
+ # yieldFun <- yield_df_sum$fun
 # leachFun <- leach_df_sum$fun
 # concFun <- conc_df_sum$fun
 # 
@@ -271,10 +355,13 @@ yield_y <- list(
 # net <- cornVal - fertCost - nloss
 # 
 # 
+# simData <- data.frame(fert = round(kgha_to_lbac(fert)), yield1 = yield_y)
 # modelDF1 <- data.frame(fert = round(kgha_to_lbac(fert)), yield1 = yield_y,
 #                       leach1 = kgha_to_lbac(leach_y), conc1 = conc_y,
 #                       net1 = net)
-# 
+
+ # wetDryData <- sim1wetdry %>%
+ #   right_join(yield_df_sum, by = c("lon.sims" = "lon", "lat.sims" = "lat"))
 # # modelDF
 # 
 # var1 <- var %>%
