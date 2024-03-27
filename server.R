@@ -133,13 +133,30 @@ server <- function(input, output, session) {
     
     site_lat <- selectedSite()$lat
     site_lon <- selectedSite()$lon
+    cornPrice <- input$cornPrice
+    fertPrice <- input$fertPrice
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
     
-    data <- makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon) %>%
-      rename(yield1 = yield)
-    #print(data)
+    dataList <- makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
+                   cornPrice = cornPrice, fertPrice = fertPrice)  
     
-    return(data)
+    data1 <- dataList$modelDF %>%
+      rename(yield1 = yield,
+             leach1 = leaching,
+             conc1 = concentration,
+             net1 = net)
+    #print(data1)
+    
+    stdev1 <- dataList$stdevDF %>%
+      rename(yield1 = yield,
+             leach1 = leaching,
+             conc1 = concentration,
+             yld_stdev1 = stdev_cropyld,
+             leach_stdev1 = stdev_no3leach,
+             conc_stdev1 = stdev_no3conc)
+    #print(stdev1)
+    
+    return(list(data1 = data1, stdev1 = stdev1))
     
   })
   
@@ -184,13 +201,15 @@ server <- function(input, output, session) {
     
     req(dat1())
     
-    data1 <- dat1()
+    data1 <- dat1()$data1
+    stdev1 <- dat1()$stdev1 
+    print(stdev1)
     wetDryData <- wetDryData()
     
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
-    print(check)
+    #print(check)
     if(length(check) <=1) {
       ifelse(grepl("Wet", check), wet <- "wet", wet <- "none");
       ifelse(grepl("Dri", check), dry <- "dry", dry <- "none")
@@ -198,83 +217,14 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    print(paste("wet", wet))
-    print(paste("dry", dry))
+    #print(paste("wet", wet))
+    #print(paste("dry", dry))
     
-    makeYldplot(simDat = data1, wetDryDat = wetDryData, wet = wet, dry = dry)
-    
-    # plot_ly(data = data1, x = ~fert, hoverinfo = "text") %>%
-    #   add_lines(y = ~ yield1, name = "Yield (bu/ac)",
-    #             line = list(color = "#ff9843", width = 4, dash = "solid"),
-    #             hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac")) %>%
-    #   layout(
-    #     xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
-    #                               font = list(size = 15))),
-    #     yaxis = list(title = list(text = "Yield (bu/ac)",
-    #                               font = list(size = 15))),
-    #     hovermode = "x unified",
-    #     margin = list(r = 50, b = 10, t = 50),
-    #     legend = list(orientation = 'h', y = -0.5,
-    #                   font = list(size = 14))
-    #     )
+    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, 
+                 y1axis = "net1", y1axisLabel = "Return to N", yaxisUnit = "$/ac",
+                 wet = wet, dry = dry)
     
   })
-  
-
-  
-  
-  # observe wet dry------------
-  # observeEvent(input$wetDry, {
-  #   
-  #   plot <- plotlyProxy("plotYield", session)
-  #   req(selectedSite())
-  #   #req(input$simSelect1)
-  #   #print(input$wetDry)
-  #   
-  #   site_lat <- selectedSite()$lat
-  #   site_lon <- selectedSite()$lon
-  #   simulation1 <- filter(sims, cropSystem == input$simSelect1) 
-  #   
-  #   wetdrydf <- makeWetDryDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon)
-  #   #print(length(input$wetDry))
-  #   vars = input$wetDry
-  #   print(length(vars))
-  #   
-  #   ifelse(length(vars) == 1,
-  #          # if(input$wetDry == "Wettest 5 years") {
-  #          #   plotlyProxy("plotYield", session) %>%
-  #          #     plotlyProxyInvoke("addTraces",
-  #          #                       list(x=c(wetdrydf$fertilizerLbsAc),y=c(wetdrydf$wetYield),
-  #          #                            type = 'scatter',
-  #          #                            mode = 'lines'))
-  #          # } else {
-  #          #   plotlyProxy("plotYield", session) %>%
-  #          #     plotlyProxyInvoke("addTraces",
-  #          #                       list(x=c(wetdrydf$fertilizerLbsAc),y=c(wetdrydf$dryYield),
-  #          #                            type = 'scatter',
-  #          #                            mode = 'lines'))
-  #          # },
-  #          ifelse(length(vars) == 2,
-  #                 
-  #                 # {plotlyProxy("plotYield", session) %>%
-  #                 #   plotlyProxyInvoke("deleteTraces", list(as.integer(1)));
-  #                 # 
-  #                 #   plotlyProxy("plotYield", session) %>%
-  #                 #     plotlyProxyInvoke("addTraces",
-  #                 #                       list(x=c(wetdrydf$fertilizerLbsAc),y=c(wetdrydf$dryYield),
-  #                 #                            type = 'scatter',
-  #                 #                            mode = 'lines')) %>%
-  #                 #     plotlyProxyInvoke("addTraces",
-  #                 #                       list(x=c(wetdrydf$fertilizerLbsAc),y=c(wetdrydf$wetYield),
-  #                 #                            type = 'scatter',
-  #                 #                            mode = 'lines'))},
-  #                 
-  #                 plotlyProxy("plotYield", session) %>%
-  #                   plotlyProxyInvoke("deleteTraces", list(as.integer(4)))
-  #          )
-  #   )
-  #   
-  # }, ignoreNULL=FALSE )
   
   observeEvent(input$simSelect1, {
     
@@ -288,7 +238,7 @@ server <- function(input, output, session) {
  
  output$range <- renderUI({
    
-   maxFert <- max(dat1()$fert)
+   maxFert <- max(dat1()$data1$fert)
    #print(maxFert)
    
    sliderInput(
@@ -321,7 +271,7 @@ output$values1 <- render_gt({
   #req(length(input$simSelect1) == 1)
   req(input$range_dat)
   
-  newdat1 <- dat1() %>%
+  newdat1 <- dat1()$data1 %>%
     filter(fert == input$range_dat) %>% 
     mutate(yield = round(yield1, 1))
   
