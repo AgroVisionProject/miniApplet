@@ -233,7 +233,7 @@ yield_y <- list(
 
 makeSim1plot <- function(simDat, stdevDF, y1axis, y1axisLabel, yaxisUnit, wetDryDat, wet = "none", dry = "none") {
   
-  yvar = simDat[[yaxis1]]
+  yvar = simDat[[y1axis]]
   
   base_plot <- plot_ly(data = simDat, x = ~fert, hoverinfo = "text") %>%
     add_lines(y = ~ yield1, name = "Yield (bu/ac)",
@@ -241,9 +241,9 @@ makeSim1plot <- function(simDat, stdevDF, y1axis, y1axisLabel, yaxisUnit, wetDry
               line = list(color = "#ff9843", width = 4, dash = "solid"),
               hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac"),
               legendgroup = "yield1") %>%
-    add_lines(y = ~ yvar, name = paste(yaxisLabel, yaxisUnit),
+    add_lines(y = ~ yvar, name = paste(y1axisLabel, yaxisUnit),
               line = list(color = "#ff9843", width = 4, dash = "dot"),
-              hovertext = ~ paste0(yaxisLabel, ": ", round(yvar, 1), " ", yaxisUnit),
+              hovertext = ~ paste0(y1axisLabel, ": ", round(yvar, 1), " ", yaxisUnit),
               legendgroup = "net1") %>%
     add_ribbons(data = stdevDF, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
                 line = list(
