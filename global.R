@@ -9,9 +9,6 @@ library(reactlog)
 library(shinyjs)
 library(shinycssloaders)
 
-
-reactlog_enable()
-
 # load shapefiles
 states = st_read("data/ncr_states_simple.shp")
 counties = st_read("data/ncr_counties_simple.shp") %>%
@@ -128,9 +125,10 @@ responseCurve <- function(dataframe, fun) {
 # make data frame----------------------
 
 makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
-  #makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice, NUE, cornTech, fertEff) {
+  
   req(is.na(simulation) == FALSE)
   
+  # create stdev data---------------
   if(simulation == 1) {var = sim1Var}
   if(simulation == 2) {var = sim2Var}
   if(simulation == 3) {var = sim3Var}
@@ -140,6 +138,7 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
     filter(lat == site_lat,
            lon == site_lon)
   
+  # filter by lat, lon, sim---------------
   yield_df_sum <- yield_df %>%
     filter(sim == simulation,
            lat == site_lat,
@@ -155,6 +154,7 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
            lat == site_lat,
            lon == site_lon)
 
+  # create dependent vars---------------
   yieldFun <- yield_df_sum$fun
   leachFun <- leach_df_sum$fun
   concFun <- conc_df_sum$fun
@@ -169,32 +169,24 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   nloss <- NUE * leach_y * fertPrice
   net <- cornVal - fertCost - nloss
 
+  # full modeled df---------------
   modelDF <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y, leaching = kgha_to_lbac(leach_y), concentration = conc_y,
              net = net) %>%
     arrange(fert)
-  #print(nrow(modelDF))
-
-  #print(modelDF)
 
   var <- var %>%
     select(c(stdev, variable, fertilizerLbsAc)) %>%
     mutate(fert = round(fertilizerLbsAc))
 
-  # join modeled DF and variance 
+  # join modeled DF and variance------------
   model_var <- left_join(modelDF, var, relationship = "many-to-many") 
-  
-  # modelDF max fert should be var max fert
-  maxFert <- max(var$fert)
+  maxFert <- max(var$fert)  # modelDF max fert should be var max fert
   modelDF <- filter(modelDF, fert < maxFert)
-  #print(maxFert)
-  #print(nrow(modelDF))
 
-  # create stdev column for each variable
+  # create stdev column for each variable------------
   stdev_wide <- model_var %>%
     drop_na(stdev) %>%
     pivot_wider(values_from = stdev, names_from = "variable", names_prefix = "stdev_")
-  #print("stdev_wide")
-  #print(stdev_wide)
 
   return(list(modelDF = modelDF, stdevDF = stdev_wide))
   
