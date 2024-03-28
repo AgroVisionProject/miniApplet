@@ -14,6 +14,7 @@ ui <- fluidPage(
                  br(),
                  actionButton("reset", "Clear locations"),
                  hr(),
+                 shinyjs::useShinyjs(),
                  uiOutput("simSelectionUI"),
                  uiOutput("pricesUI"),
                  uiOutput("sliderUI")),
