@@ -8,6 +8,7 @@ library(gt)
 library(reactlog)
 library(shinyjs)
 library(shinycssloaders)
+library(htmltools)
 
 # load shapefiles
 states = st_read("data/ncr_states_simple.shp")
@@ -39,17 +40,12 @@ sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
 sim3wetdry <- read_csv("data/sim3wetdry.csv.gz")
 sim4wetdry <- read_csv("data/sim4wetdry.csv.gz")
 
-sites <- read_csv("data/sampleSites.csv.gz") %>%
+sites <- read_csv("data/sampleSitesBio.csv.gz") %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
   mutate(id = row_number(), .before = 1)
 
 sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
 simNames = sims$cropSystem
-
-soil <- read_csv("data/soilText.csv.gz") 
-soil_csv <- read_csv("data/soilClasses.csv")
-
-gdd <- read_csv("data/GDD.csv_gz")
 
 # define fertilizer/x axis----------
 fert = seq(from = 0, to = 350, by = 1) #kg/ha
@@ -90,7 +86,6 @@ base_map <- function() {
     setView(lat = 41.5, lng = -93.5, zoom = 4) %>%
     addProviderTiles("Esri.WorldTopoMap") 
 }
-
 
 # determine response curve--------
 responseCurve <- function(dataframe, fun) {
@@ -291,14 +286,14 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
   
 }
 
-# makeBasePlot(simDat = modelDF1,variable = "rtn", y1axis = "net1", y1axisLabel = "Return to N", yaxisUnit = "$/ac",stdevDF = stdevDF)
+#base_plot <-  makeBasePlot(simDat = modelDF1,variable = "rtn", y1axis = "net1", y1axisLabel = "Return to N", yaxisUnit = "$/ac",stdevDF = stdevDF)
 # makeBasePlot(simDat = modelDF1, variable = "conc", y1axis = "conc1", y1axisLabel = "Nitrate concentration", yaxisUnit = "ppm",
 #              stdevDF = stdevDF, stdevVar = "conc_stdev1")
 # makeBasePlot(simDat = modelDF1, variable = "leach", y1axis = "leach1", y1axisLabel = "Nitrate concentration", yaxisUnit = "lb/ac",
 #              stdevDF = stdevDF, stdevVar = "leach_stdev1")
 
 
-addWetDryLines <- function(wetDryDat, wetY, dryY, precName, precUnits, wet = "none", dry = "none", base_plot = base_plot) {
+addWetDryLines <- function(wetDryDat, wetY, dryY, y_side, precName, precUnits, wet = "none", dry = "none", base_plot = base_plot) {
   
   dryVar = wetDryDat[[dryY]]
   wetVar = wetDryDat[[wetY]]
@@ -310,22 +305,22 @@ addWetDryLines <- function(wetDryDat, wetY, dryY, precName, precUnits, wet = "no
     #print(paste("wet", is.null(wet)))
     plt <- base_plot %>%
       add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~wetVar, name = paste("Wettest", precName),
-                line = list(color = "blue", width = 4, dash = "solid"),
+                line = list(color = "blue", width = 4, dash = "solid"), yaxis = y_side,
                 hovertext = ~ paste0("Wet ", precName, ": ",round(wetVar, 1), " ", precUnits))
   } else if (wet == "none" & dry == "dry") { # return base plot plus dry if dry is checked
     #print("dry")
     plt <- base_plot %>%
       add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~dryVar, name = paste("Driest", precName),
-                line = list(color = "blue", width = 4, dash = "dash"),
+                line = list(color = "blue", width = 4, dash = "dash"), yaxis = y_side,
                 hovertext = ~ paste0("Dry ", precName, ": ",round(dryVar, 1), " ", precUnits))
   } else { # both are checked
     #print("both")
     plt <- base_plot %>%
       add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~dryVar, name = paste("Driest", precName),
-                line = list(color = "blue", width = 4, dash = "dash"),
+                line = list(color = "blue", width = 4, dash = "dash"), yaxis = y_side,
                 hovertext = ~ paste0("Dry ", precName, ": ",round(dryVar, 1), " ", precUnits)) %>%
       add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~wetVar, name = paste("Wettest", precName),
-                line = list(color = "blue", width = 4, dash = "solid"),
+                line = list(color = "blue", width = 4, dash = "solid"),yaxis = y_side,
                 hovertext = ~ paste0("Wet ", precName, ": ",round(wetVar, 1), " ", precUnits))
   }
   
@@ -333,7 +328,7 @@ addWetDryLines <- function(wetDryDat, wetY, dryY, precName, precUnits, wet = "no
 }
 
 # addWetDryLines(wetDryDat = wetDryData,
-#                wetY = "wetYield", dryY = "dryYield", precName = "yield", precUnits = "bu/ac", wet = "none", dry = "none",
+#                wetY = "wetYield", dryY = "dryYield", y_side = "y2", precName = "yield", precUnits = "bu/ac", wet = "wet", dry = "dry",
 #                base_plot = base_plot)
 
 makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisUnit, dryY, wetY, precName,
@@ -346,6 +341,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisU
     stdevVar = NULL;
     dryY = "dryYield";
     wetY = "wetYield";
+    y_side = "y2";
     precName = "yield";
     precUnits = "bu/ac"
   }
@@ -356,6 +352,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisU
     stdevVar = "leach_stdev1";
     dryY = "dryLeach";
     wetY = "wetLeach";
+    y_side = "y1";
     precName = "leach";
     precUnits = "lb/ac"
   }
@@ -366,6 +363,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisU
     stdevVar = "conc_stdev1";
     dryY = "dryConc";
     wetY = "wetConc";
+    y_side = "y1";
     precName = "concentration";
     precUnits = "ppm"
   }
@@ -375,7 +373,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisU
                             stdevDF = stdevDF, stdevVar = stdevVar)
   
   
-  plt <- addWetDryLines(wetDryDat = wetDryDat, wetY = wetY, dryY = dryY, precName = precName, precUnits = precUnits,
+  plt <- addWetDryLines(wetDryDat = wetDryDat, wetY = wetY, dryY = dryY, y_side = y_side, precName = precName, precUnits = precUnits,
                         wet = wet, dry = dry, base_plot = base_plot)
   
   plt
@@ -383,7 +381,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisU
 }
 
 
-#makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "rtn")
+#makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "conc", wet = "wet")
 #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "rtn", wet = 'wet', dry = 'dry')
 #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, y1axis = "net1", y1axisLabel = "Return to N", yaxisUnit = "$/ac")
 # makeYldplot(simDat = simData, wetDryDat = wetDryData, dry = "dry")
@@ -438,7 +436,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisU
 #  wetDryData <- sim1wetdry %>%
 #    right_join(yield_df_sum, by = c("lon.sims" = "lon", "lat.sims" = "lat"))
 # # # modelDF
-# # 
+# #
 # var1 <- var %>%
 #   select(c(stdev, variable, fertilizerLbsAc, meanFert)) %>%
 #   mutate(fert = round(fertilizerLbsAc))

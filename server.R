@@ -58,12 +58,17 @@ server <- function(input, output, session) {
   observeEvent(input$map_marker_click, {
     
     req(selectedSite())
+    text = paste(selectedSite()$county, "County,", selectedSite()$state, "<br/>",
+                 "Soil texture:", str_to_sentence(selectedSite()$texture),  "<br/>",
+                 "Average annual precipitation (mm):", round(selectedSite()$avgPrecip), "<br/>",
+                 "Average annual growing degree days:", round(selectedSite()$avgGDD))
     
     leafletProxy("map") %>%
       clearGroup("cur_site") %>%
-      addMarkers(
+      addPopups(
         data = selectedSite(), 
-        lat = ~selectedSite()$lat, lng = ~selectedSite()$lon,
+        lat = ~selectedSite()$lat, lng = ~selectedSite()$lon, text,
+        options = popupOptions(closeButton = FALSE),
         group = "cur_site"
       )
     
@@ -127,6 +132,7 @@ server <- function(input, output, session) {
       shinyjs::enable('wetDry')
     }
   })
+  
   
   
   observeEvent(input$simSelect1, {
