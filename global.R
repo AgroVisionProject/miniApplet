@@ -88,7 +88,7 @@ base_map <- function() {
       options = pathOptions(pane = "sites")
     ) %>%
     groupOptions("state", zoomLevels = 1:8) %>%
-    groupOptions("county", zoomLevels = 8:14) %>%
+    groupOptions("county", zoomLevels = 7:14) %>%
     groupOptions("sites", zoomLevels = 9:14) %>%
     setView(lat = 41.5, lng = -93.5, zoom = 4) %>%
     addProviderTiles("Esri.WorldTopoMap") 
@@ -228,10 +228,10 @@ yield_y <- list(
 nRecLine <- function(x = 0, color = "#222222") {
   list(
     type = "line",
-    text = "N fert rec",
+    text = "N fert reccomendation",
     y0 = 0,
     y1 = 1,
-    yref = "paper",
+    yref = "paper",#TODO ?
     x0 = x,
     x1 = x,
     line = list(color = color, dash="dot")
@@ -245,6 +245,7 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
   if(!is.null(stdevVar)) {
     stdev = stdevDF[[stdevVar]]
   }
+  ymax = max(yvar)
   #print(stdev)
   #print(paste0(y1axisLabel, ": ± ", round(stdev)))
   
@@ -274,12 +275,22 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
       yaxis = list(title = list(text = y1axisLabel,
                                 font = list(size = 15))),
       yaxis2 = yield_y,
-      shapes = list(nRecLine(nRec)), 
+      #shapes = list(nRecLine(nRec)), 
+      shapes = list(nRecLine(nRec)#, 
+                    #list(type = "rect", fillcolor = "#222222", line = list(color = "#222222"),
+                     #    opacity = 0.2, y0 = 0, y1 = ymax, x0 = nRec-10, x1 = nRec+10)
+                    ),
       hovermode = "x unified",
       margin = list(r = 50, b = 10, t = 50),
       legend = list(orientation = 'h', y = -0.5,
                     font = list(size = 14))
-    )  
+    ) %>%
+    add_annotations(showlegend = FALSE, 
+                    x = c(nRec), y = c(ymax),
+                    text = c("N fert rec"), 
+                    showarrow = FALSE,
+                    #textangle = 315,
+                    font = list(color = c('#000000'), size = c(14)))
   
   if(variable == "rtn") {
     base_plot <- base_plot

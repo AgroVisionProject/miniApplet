@@ -21,7 +21,7 @@ server <- function(input, output, session) {
       lat <- as.numeric(state$stateLat)
       lon <- as.numeric(state$stateLin)
       leafletProxy("map") %>%
-        setView(lat = lat, lng = lon, zoom = 8)
+        setView(lat = lat, lng = lon, zoom = 7)
       #return()
       
     } 
