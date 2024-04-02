@@ -44,8 +44,15 @@ sites <- read_csv("data/sampleSitesBio.csv.gz") %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
   mutate(id = row_number(), .before = 1)
 
+textures <- levels(as.factor(sites$texture))
+sandyTextures <- c("sand", "loamy sand")
+  
+  
 sims <-  readxl::read_xlsx("data/simulationNames.xlsx")
 simNames = sims$cropSystem
+
+# fert recs----------
+fertRecs <- readxl::read_xlsx("data/fertRecs.xlsx")
 
 # define fertilizer/x axis----------
 fert = seq(from = 0, to = 350, by = 1) #kg/ha
@@ -218,7 +225,20 @@ yield_y <- list(
                standoff = 10L)
 )
 
-makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdevDF, stdevVar = NULL) {
+nRecLine <- function(x = 0, color = "#222222") {
+  list(
+    type = "line",
+    text = "N fert rec",
+    y0 = 0,
+    y1 = 1,
+    yref = "paper",
+    x0 = x,
+    x1 = x,
+    line = list(color = color, dash="dot")
+  )
+}
+
+makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdevDF, stdevVar = NULL, nRec) {
   
   yvar = simDat[[y1axis]]
   stdevYvar = stdevDF[[y1axis]]
@@ -254,6 +274,7 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
       yaxis = list(title = list(text = y1axisLabel,
                                 font = list(size = 15))),
       yaxis2 = yield_y,
+      shapes = list(nRecLine(nRec)), 
       hovermode = "x unified",
       margin = list(r = 50, b = 10, t = 50),
       legend = list(orientation = 'h', y = -0.5,
@@ -286,7 +307,7 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
   
 }
 
-#base_plot <-  makeBasePlot(simDat = modelDF1,variable = "rtn", y1axis = "net1", y1axisLabel = "Return to N", yaxisUnit = "$/ac",stdevDF = stdevDF)
+#base_plot <- makeBasePlot(simDat = modelDF1,variable = "rtn", y1axis = "net1", y1axisLabel = "Return to N", yaxisUnit = "$/ac",stdevDF = stdevDF) 
 # makeBasePlot(simDat = modelDF1, variable = "conc", y1axis = "conc1", y1axisLabel = "Nitrate concentration", yaxisUnit = "ppm",
 #              stdevDF = stdevDF, stdevVar = "conc_stdev1")
 # makeBasePlot(simDat = modelDF1, variable = "leach", y1axis = "leach1", y1axisLabel = "Nitrate concentration", yaxisUnit = "lb/ac",
@@ -331,7 +352,7 @@ addWetDryLines <- function(wetDryDat, wetY, dryY, y_side, precName, precUnits, w
 #                wetY = "wetYield", dryY = "dryYield", y_side = "y2", precName = "yield", precUnits = "bu/ac", wet = "wet", dry = "dry",
 #                base_plot = base_plot)
 
-makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisUnit, dryY, wetY, precName,
+makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, yaxisUnit, dryY, wetY, precName,
                          wetDryDat,  wet = "none", dry = "none") {
   
   if(variable == "rtn") {
@@ -370,7 +391,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisU
   
   base_plot <- makeBasePlot(simDat = simDat, variable = variable,
                             y1axis = y1axis, y1axisLabel = y1axisLabel, yaxisUnit = yaxisUnit,
-                            stdevDF = stdevDF, stdevVar = stdevVar)
+                            stdevDF = stdevDF, stdevVar = stdevVar, nRec = nRec)
   
   
   plt <- addWetDryLines(wetDryDat = wetDryDat, wetY = wetY, dryY = dryY, y_side = y_side, precName = precName, precUnits = precUnits,
@@ -379,6 +400,38 @@ makeSim1plot <- function(simDat, stdevDF, variable, #y1axis, y1axisLabel, yaxisU
   plt
   
 }
+
+determineFertRec <- function(simulation, site, cornPrice, fertPrice) {
+  
+  nPriceRatios <- c(0.05, 0.1, 0.15, 0.2)
+  nToCornRatio <- fertPrice/cornPrice
+  #print(nToCornRatio)
+  x <- which.min(abs(nPriceRatios-nToCornRatio))
+  Nratio <- nPriceRatios[x]
+  #print(Nratio)
+  
+  previousCropping <- if_else(simulation == 1 | simulation == 2,  "corn", "soy") 
+  irrigation <- if_else(simulation == 1 | simulation == 3, "no", "yes")
+  
+  #print(previousCropping)
+  #print(irrigation)
+  
+  if(site$texture %in% sandyTextures) {
+    nRec <- fertRecs %>%
+      filter(soil == "sandy",
+             irrigated == irrigation,
+             NtoCorn == Nratio)
+  } else {
+    nRec <- fertRecs %>%
+      filter(soil == "loamy",
+             previousCrop == previousCropping,
+             NtoCorn == Nratio)
+  }
+  
+  return(nRec$Nrec)
+  
+}
+
 
 
 #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "conc", wet = "wet")
