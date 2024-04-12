@@ -7,6 +7,7 @@ library(plotly)
 library(gt)
 library(reactlog)
 library(shinyjs)
+library(shinyBS)
 library(shinycssloaders)
 library(htmltools)
 
@@ -26,19 +27,19 @@ county_centroids = counties %>%
   arrange(id)
 
 # load data-----------------
-leach_df <- read_csv("data/leachData.csv.gz")
-yield_df <- read_csv("data/yieldData.csv.gz")
-conc_df <- read_csv("data/concData.csv.gz")
-
-sim1Var <- read_csv("data/sim1_SD.csv.gz")
-sim2Var <- read_csv("data/sim2_SD.csv.gz")
-sim3Var <- read_csv("data/sim3_SD.csv.gz")
-sim4Var <- read_csv("data/sim4_SD.csv.gz")
-
-sim1wetdry <- read_csv("data/sim1wetdry.csv.gz")
-sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
-sim3wetdry <- read_csv("data/sim3wetdry.csv.gz")
-sim4wetdry <- read_csv("data/sim4wetdry.csv.gz")
+# leach_df <- read_csv("data/leachData.csv.gz")
+# yield_df <- read_csv("data/yieldData.csv.gz")
+# conc_df <- read_csv("data/concData.csv.gz")
+# 
+# sim1Var <- read_csv("data/sim1_SD.csv.gz")
+# sim2Var <- read_csv("data/sim2_SD.csv.gz")
+# sim3Var <- read_csv("data/sim3_SD.csv.gz")
+# sim4Var <- read_csv("data/sim4_SD.csv.gz")
+# 
+# sim1wetdry <- read_csv("data/sim1wetdry.csv.gz")
+# sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
+# sim3wetdry <- read_csv("data/sim3wetdry.csv.gz")
+# sim4wetdry <- read_csv("data/sim4wetdry.csv.gz")
 
 sites <- read_csv("data/sampleSitesBio.csv.gz") %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
@@ -72,26 +73,46 @@ base_map <- function() {
     addMapPane("sites", 453) %>%
     addPolygons(data = states,
                 group = "state",
-                col = "blue",
+                col = "white",
+                opacity = 0.5,
+                #fill = FALSE,
+                fillOpacity = 0,
+                weight = 2,
                 layerId = ~state,
+                highlightOptions = highlightOptions(color = "#1AA7EC", weight = 2,
+                                                    bringToFront = TRUE),
                 options = pathOptions(pane = "states")) %>%
     addPolygons(data = counties,
                 group = "county",
-                col = "darkgreen",
+                col = "white",
+                opacity = 0.3,
+                #fill = FALSE,
+                fillOpacity = 0,
+                weight = 2,
+                highlightOptions = highlightOptions(color = "#1AA7EC", weight = 2,
+                                                    bringToFront = TRUE),
                 layerId = ~id,
                 options = pathOptions(pane = "counties")) %>%
-    addCircleMarkers(
-      data = sites,
-      lat = ~lat, lng = ~lon,
-      layerId = ~id,
-      group = "sites", 
-      options = pathOptions(pane = "sites")
-    ) %>%
+    addRectangles(data = sites,
+                  lng1 = ~ lon - .04, lng2 = ~ lon + .04,
+                  lat1 = ~ lat - .04, lat2 = ~ lat + .04,
+                  layerId = ~id,
+                  col = "#8e918f",
+                  weight = 2,
+                  #opacity = 0.5,
+                  fillOpacity = 0.1,
+                  opacity = 3,
+                  group = "sites",
+                  highlightOptions = highlightOptions(color = "#1AA7EC", weight = 2,
+                                                      bringToFront = TRUE),
+                  options = pathOptions(pane = "sites")) %>%
     groupOptions("state", zoomLevels = 1:8) %>%
     groupOptions("county", zoomLevels = 7:14) %>%
     groupOptions("sites", zoomLevels = 9:14) %>%
-    setView(lat = 41.5, lng = -93.5, zoom = 4) %>%
-    addProviderTiles("Esri.WorldTopoMap") 
+    setView(lat = 43.0, lng = -92.5, zoom = 5) %>%
+    addProviderTiles("Esri.WorldImagery") %>%
+    addProviderTiles("Stadia.StamenTerrainLabels") %>%
+    addProviderTiles("Stadia.StamenTerrainLines")
 }
 
 # determine response curve--------
@@ -164,6 +185,13 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
   leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
   conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun)
+  
+  # multiply all yield by 1.15 to account for increases over the past 10 years
+  # Multiply all N leaching and N concentration data by 0.70
+  
+  yield_y <- 1.15*yield_y
+  leach_y <- 0.7*leach_y
+  conc_y <- 0.7*conc_y
 
   cornVal <- (yield_y - yield_y[1]) * cornPrice
   fertCost <- round(kgha_to_lbac(fert)) * fertPrice
@@ -206,8 +234,12 @@ makeWetDryDF <- function(simulation, site_lat, site_lon) {
   wetDry <- wetDry %>%
     #mutate(meanFert = round(meanFert)) %>%
     filter(lat.sims == site_lat,
-           lon.sims == site_lon)
-  
+           lon.sims == site_lon) %>% ##TODO check if I should make these adjustments
+    mutate(wetYield = 1.15*wetYield,
+           dryYield = 1.15*dryYield,
+           wetLeach = 0.7*wetLeach,
+           dryLeach = 0.7*dryLeach,
+           wetConc = 0.7*wetConc)
  
   return(wetDry)
   
@@ -225,18 +257,18 @@ yield_y <- list(
                standoff = 10L)
 )
 
-nRecLine <- function(x = 0, color = "#222222") {
-  list(
-    type = "line",
-    text = "N fert reccomendation",
-    y0 = 0,
-    y1 = 1,
-    yref = "paper",#TODO ?
-    x0 = x,
-    x1 = x,
-    line = list(color = color, dash="dot")
-  )
-}
+# nRecLine <- function(x = 0, color = "#222222") {
+#   list(
+#     type = "line",
+#     text = "N fert reccomendation",
+#     y0 = 0,
+#     y1 = 1,
+#     yref = "paper",#TODO ?
+#     x0 = x,
+#     x1 = x,
+#     line = list(color = color, dash="dot")
+#   )
+# }
 
 makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdevDF, stdevVar = NULL, nRec) {
   
@@ -245,17 +277,19 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
   if(!is.null(stdevVar)) {
     stdev = stdevDF[[stdevVar]]
   }
-  ymax = max(yvar)
+  ymax = max(yvar, simDat$yield1)
   #print(stdev)
   #print(paste0(y1axisLabel, ": ± ", round(stdev)))
   
-  base_plot <- plot_ly(data = simDat, x = ~fert, hoverinfo = "text") %>%
+  base_plot <- plot_ly(data = simDat, x = ~fert) %>%
     add_lines(y = ~ yield1, name = "Yield (bu/ac)",
               yaxis = "y2",
+              hoverinfo = "text",
               line = list(color = "#ff9843", width = 4, dash = "solid"),
               hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac"),
               legendgroup = "yield1") %>%
     add_lines(y = ~ yvar, name = paste(y1axisLabel, yaxisUnit),
+              hoverinfo = "text",
               line = list(color = "#ff9843", width = 4, dash = "dot"),
               hovertext = ~ paste0(y1axisLabel, ": ", round(yvar, 1), " ", yaxisUnit),
               legendgroup = "net1") %>%
@@ -266,31 +300,35 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
                   opacity = 0.5),
                 fillcolor = "#ff9843",
                 yaxis = "y2",
-                hovertext = ~paste("±", round(yld_stdev1)),
+                hoverinfo="none",
                 opacity = 0.5,
                 legendgroup = "yield1", showlegend = FALSE) %>%
+    add_segments(x = ~nRec, y = 0, xend = ~ nRec, yend = ymax, 
+                 name = "N fertilizer recommendation",
+                 hoverinfo="none",    
+                 line = list(color = "black", dash="dot")) %>%
     layout(
-      xaxis = list(title = list(text =  "N fertilizer (N lb/ac)",
+      xaxis = list(dtick = 25,
+                   title = list(text =  "N fertilizer (N lb/ac)",
                                 font = list(size = 15))),
       yaxis = list(title = list(text = y1axisLabel,
                                 font = list(size = 15))),
       yaxis2 = yield_y,
       #shapes = list(nRecLine(nRec)), 
-      shapes = list(nRecLine(nRec)#, 
-                    #list(type = "rect", fillcolor = "#222222", line = list(color = "#222222"),
-                     #    opacity = 0.2, y0 = 0, y1 = ymax, x0 = nRec-10, x1 = nRec+10)
+      shapes = list(list(type = "rect", fillcolor = "#222222", line = list(color = "#222222"),
+                       opacity = 0.2, y0 = 0, y1 = ymax, x0 = nRec-(.1*nRec), x1 = nRec+(.1*nRec))
                     ),
       hovermode = "x unified",
       margin = list(r = 50, b = 10, t = 50),
       legend = list(orientation = 'h', y = -0.5,
                     font = list(size = 14))
-    ) %>%
-    add_annotations(showlegend = FALSE, 
-                    x = c(nRec), y = c(ymax),
-                    text = c("N fert rec"), 
-                    showarrow = FALSE,
-                    #textangle = 315,
-                    font = list(color = c('#000000'), size = c(14)))
+    ) #%>%
+    # add_annotations(showlegend = FALSE, 
+    #                 x = c(nRec), y = c(ymax),
+    #                 text = c("N fert rec"), 
+    #                 showarrow = FALSE,
+    #                 #textangle = 315,
+    #                 font = list(color = c('#000000'), size = c(14)))
   
   if(variable == "rtn") {
     base_plot <- base_plot
@@ -302,16 +340,17 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
                     width = 0.5,
                     opacity = 0),
                   fillcolor = "#ff9843",
-                  hovertext = ~paste0(y1axisLabel, ": ± ", round(stdev)),
+                  hoverinfo = "none",
                   opacity = 0.5,
                   legendgroup = "conc1", showlegend = FALSE)
   }
   
   if(variable == "conc") {
     base_plot <- base_plot %>%
-        add_lines(y = 10, name = "Max safe NO<sub>3</sub> (10 ppm)",
-                  line = list(color = "black", width = 4, dash = "solid"),
-                  hovertext='Max safe NO<sub>3</sub>') 
+        add_lines(y = 10, name = "EPA safe drinking water standard (10 NO<sub>3</sub> ppm)",
+                  line = list(color = "#d40000", width = 2, dash = "solid"),
+                  hoverinfo = "none",
+                  hovertext='EPA safe drinking water standard') 
   }
   
   return(base_plot)
@@ -368,7 +407,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
   
   if(variable == "rtn") {
     y1axis = "net1";
-    y1axisLabel = "Return to N";
+    y1axisLabel = "Return to N ($/ac)";
     yaxisUnit = "$/ac";
     stdevVar = NULL;
     dryY = "dryYield";
@@ -379,7 +418,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
   }
   if(variable == "leach") {
     y1axis = "leach1";
-    y1axisLabel = "NO<sub>3</sub> leaching";
+    y1axisLabel = "NO<sub>3</sub> leaching (lb/ac)";
     yaxisUnit = "lb/ac";
     stdevVar = "leach_stdev1";
     dryY = "dryLeach";
@@ -390,7 +429,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
   }
   if(variable == "conc") {
     y1axis = "conc1";
-    y1axisLabel = "NO<sub>3</sub> concentration";
+    y1axisLabel = "NO<sub>3</sub> concentration (ppm)";
     yaxisUnit = "ppm";
     stdevVar = "conc_stdev1";
     dryY = "dryConc";
