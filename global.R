@@ -27,19 +27,19 @@ county_centroids = counties %>%
   arrange(id)
 
 # load data-----------------
-# leach_df <- read_csv("data/leachData.csv.gz")
-# yield_df <- read_csv("data/yieldData.csv.gz")
-# conc_df <- read_csv("data/concData.csv.gz")
-# 
-# sim1Var <- read_csv("data/sim1_SD.csv.gz")
-# sim2Var <- read_csv("data/sim2_SD.csv.gz")
-# sim3Var <- read_csv("data/sim3_SD.csv.gz")
-# sim4Var <- read_csv("data/sim4_SD.csv.gz")
-# 
-# sim1wetdry <- read_csv("data/sim1wetdry.csv.gz")
-# sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
-# sim3wetdry <- read_csv("data/sim3wetdry.csv.gz")
-# sim4wetdry <- read_csv("data/sim4wetdry.csv.gz")
+leach_df <- read_csv("data/leachData.csv.gz")
+yield_df <- read_csv("data/yieldData.csv.gz")
+conc_df <- read_csv("data/concData.csv.gz")
+
+sim1Var <- read_csv("data/sim1_SD.csv.gz")
+sim2Var <- read_csv("data/sim2_SD.csv.gz")
+sim3Var <- read_csv("data/sim3_SD.csv.gz")
+sim4Var <- read_csv("data/sim4_SD.csv.gz")
+
+sim1wetdry <- read_csv("data/sim1wetdry.csv.gz")
+sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
+sim3wetdry <- read_csv("data/sim3wetdry.csv.gz")
+sim4wetdry <- read_csv("data/sim4wetdry.csv.gz")
 
 sites <- read_csv("data/sampleSitesBio.csv.gz") %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
