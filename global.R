@@ -41,7 +41,7 @@ sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
 sim3wetdry <- read_csv("data/sim3wetdry.csv.gz")
 sim4wetdry <- read_csv("data/sim4wetdry.csv.gz")
 
-sites <- read_csv("data/sampleSitesBio.csv.gz") %>%
+sites <- read_csv("data/sampleSitesBioGDD.csv.gz") %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
   mutate(id = row_number(), .before = 1)
 
@@ -77,19 +77,19 @@ base_map <- function() {
                 opacity = 0.5,
                 #fill = FALSE,
                 fillOpacity = 0,
-                weight = 2,
+                weight = 3,
                 layerId = ~state,
-                highlightOptions = highlightOptions(color = "#1AA7EC", weight = 2,
+                highlightOptions = highlightOptions(color = "#1AA7EC", weight = 3,
                                                     bringToFront = TRUE),
                 options = pathOptions(pane = "states")) %>%
     addPolygons(data = counties,
                 group = "county",
                 col = "white",
-                opacity = 0.3,
+                opacity = 0.5,
                 #fill = FALSE,
                 fillOpacity = 0,
-                weight = 2,
-                highlightOptions = highlightOptions(color = "#1AA7EC", weight = 2,
+                weight = 3,
+                highlightOptions = highlightOptions(color = "#1AA7EC", weight = 3,
                                                     bringToFront = TRUE),
                 layerId = ~id,
                 options = pathOptions(pane = "counties")) %>%
@@ -98,9 +98,9 @@ base_map <- function() {
                   lat1 = ~ lat - .04, lat2 = ~ lat + .04,
                   layerId = ~id,
                   col = "#8e918f",
-                  weight = 2,
+                  weight = 3,
                   #opacity = 0.5,
-                  fillOpacity = 0.1,
+                  fillOpacity = 0,
                   opacity = 3,
                   group = "sites",
                   highlightOptions = highlightOptions(color = "#1AA7EC", weight = 2,
@@ -150,6 +150,7 @@ responseCurve <- function(dataframe, fun) {
 makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   
   req(is.na(simulation) == FALSE)
+  #print(paste("simulation", simulation))
   
   # create stdev data---------------
   if(simulation == 1) {var = sim1Var}
@@ -161,11 +162,14 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
     filter(lat == site_lat,
            lon == site_lon)
   
+  #print(head(var))
+  
   # filter by lat, lon, sim---------------
   yield_df_sum <- yield_df %>%
     filter(sim == simulation,
            lat == site_lat,
            lon == site_lon)
+  #print(yield_df_sum)
 
   leach_df_sum <- leach_df %>%
     filter(sim == simulation,
@@ -185,13 +189,6 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
   leach_y <- responseCurve(dataframe = leach_df_sum, fun = leachFun)
   conc_y <- responseCurve(dataframe = conc_df_sum, fun = concFun)
-  
-  # multiply all yield by 1.15 to account for increases over the past 10 years
-  # Multiply all N leaching and N concentration data by 0.70
-  
-  yield_y <- 1.15*yield_y
-  leach_y <- 0.7*leach_y
-  conc_y <- 0.7*conc_y
 
   cornVal <- (yield_y - yield_y[1]) * cornPrice
   fertCost <- round(kgha_to_lbac(fert)) * fertPrice
@@ -234,12 +231,7 @@ makeWetDryDF <- function(simulation, site_lat, site_lon) {
   wetDry <- wetDry %>%
     #mutate(meanFert = round(meanFert)) %>%
     filter(lat.sims == site_lat,
-           lon.sims == site_lon) %>% ##TODO check if I should make these adjustments
-    mutate(wetYield = 1.15*wetYield,
-           dryYield = 1.15*dryYield,
-           wetLeach = 0.7*wetLeach,
-           dryLeach = 0.7*dryLeach,
-           wetConc = 0.7*wetConc)
+           lon.sims == site_lon) 
  
   return(wetDry)
   
@@ -252,23 +244,10 @@ yield_y <- list(
   tickfont = list(color = "black"),
   overlaying = "y",
   side = "right",
-  title = list(text = "Yield (bu/ac)",
+  title = list(text = "Yield (bu/ac, ± 1 SD) ",
                font = list(size = 15),
                standoff = 10L)
 )
-
-# nRecLine <- function(x = 0, color = "#222222") {
-#   list(
-#     type = "line",
-#     text = "N fert reccomendation",
-#     y0 = 0,
-#     y1 = 1,
-#     yref = "paper",#TODO ?
-#     x0 = x,
-#     x1 = x,
-#     line = list(color = color, dash="dot")
-#   )
-# }
 
 makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdevDF, stdevVar = NULL, nRec) {
   
@@ -276,10 +255,11 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
   stdevYvar = stdevDF[[y1axis]]
   if(!is.null(stdevVar)) {
     stdev = stdevDF[[stdevVar]]
+    ymax = max(yvar, simDat$yield1, (stdevYvar + stdev))
   }
-  ymax = max(yvar, simDat$yield1)
-  #print(stdev)
-  #print(paste0(y1axisLabel, ": ± ", round(stdev)))
+  if(is.null(stdevVar)) {
+    ymax = max(yvar, simDat$yield1)
+  }
   
   base_plot <- plot_ly(data = simDat, x = ~fert) %>%
     add_lines(y = ~ yield1, name = "Yield (bu/ac)",
@@ -314,7 +294,6 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
       yaxis = list(title = list(text = y1axisLabel,
                                 font = list(size = 15))),
       yaxis2 = yield_y,
-      #shapes = list(nRecLine(nRec)), 
       shapes = list(list(type = "rect", fillcolor = "#222222", line = list(color = "#222222"),
                        opacity = 0.2, y0 = 0, y1 = ymax, x0 = nRec-(.1*nRec), x1 = nRec+(.1*nRec))
                     ),
@@ -322,13 +301,7 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
       margin = list(r = 50, b = 10, t = 50),
       legend = list(orientation = 'h', y = -0.5,
                     font = list(size = 14))
-    ) #%>%
-    # add_annotations(showlegend = FALSE, 
-    #                 x = c(nRec), y = c(ymax),
-    #                 text = c("N fert rec"), 
-    #                 showarrow = FALSE,
-    #                 #textangle = 315,
-    #                 font = list(color = c('#000000'), size = c(14)))
+    ) 
   
   if(variable == "rtn") {
     base_plot <- base_plot
@@ -418,7 +391,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
   }
   if(variable == "leach") {
     y1axis = "leach1";
-    y1axisLabel = "NO<sub>3</sub> leaching (lb/ac)";
+    y1axisLabel = "NO<sub>3</sub> leaching (lb/ac, ± 1 SD)";
     yaxisUnit = "lb/ac";
     stdevVar = "leach_stdev1";
     dryY = "dryLeach";
@@ -429,7 +402,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
   }
   if(variable == "conc") {
     y1axis = "conc1";
-    y1axisLabel = "NO<sub>3</sub> concentration (ppm)";
+    y1axisLabel = "NO<sub>3</sub> concentration (ppm, ± 1 SD)";
     yaxisUnit = "ppm";
     stdevVar = "conc_stdev1";
     dryY = "dryConc";

@@ -32,7 +32,8 @@ ui <- fluidPage(
                  shinyjs::useShinyjs(),
                  uiOutput("simSelectionUI"),
                  uiOutput("pricesUI"),
-                 uiOutput("sliderUI")),
+                 uiOutput("slider1UI"),
+                 uiOutput("slider2UI")),
     mainPanel(leafletOutput("map", height = 350) %>%
                 withSpinner(type = 3,
                             color.background = "white"),

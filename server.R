@@ -16,7 +16,7 @@ server <- function(input, output, session) {
   observeEvent(input$map_shape_click, {
     
     click <- input$map_shape_click
-    print(click)
+    #print(click)
     
     if (click$group == "state") {
       
@@ -49,14 +49,15 @@ server <- function(input, output, session) {
       click <- input$map_shape_click
       lat <- as.numeric(click$lat)
       lon <- as.numeric(click$lng)
-      #print(click)
+      # print("click group sites")
+      # print(click)
       site <- sites %>% filter(id == click$id)
       selectedSite(site)
       
       text = paste0(site$county, " County, ", site$state, "<br/>",
                    "Soil texture: ", str_to_sentence(site$texture),  "<br/>",
                    "Average annual precipitation: ", round(site$avgPrecip), " mm (", round(site$avgPrecip*0.0393701), " in)", "<br/>",
-                   "Average annual growing degree days: ", round(site$avgGDD))
+                   "Average annual growing degree days: ", round(site$avgGDD), " C (", round(site$avgGDD_F), " F)")
       
       
       leafletProxy("map") %>%
@@ -80,14 +81,15 @@ server <- function(input, output, session) {
   observe({
     req(selectedSite())
     zoom <- input$map_zoom
-    #print(zoom)
+    # print("zoom")
+    # print(zoom)
     if(zoom < 10) {
       leafletProxy("map") %>%
-        clearGroup("cur_site") 
+        clearGroup("cur_site")
     }
-    
+
   })
-  
+
   # sim selection UI-------------------
   
   output$simSelectionUI <- renderUI({
@@ -193,7 +195,7 @@ server <- function(input, output, session) {
     fertPrice <- input$fertPrice
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
     
-    dataList <- makeDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
+    dataList <- makeDF(simulation = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
                    cornPrice = cornPrice, fertPrice = fertPrice)  
     
     data1 <- dataList$modelDF %>%
@@ -330,8 +332,8 @@ server <- function(input, output, session) {
     
     req(dat1())
     nRec <- fertRec()
-    print("nrec")
-    print(nRec)
+    #print("nrec")
+    #print(nRec)
     
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1 
@@ -418,7 +420,7 @@ server <- function(input, output, session) {
         xaxis = list(dtick = 25,
                      title = list(text =  "N fertilizer (N lb/ac)",
                                   font = list(size = 15))),
-        yaxis = list(title = list(text = "Return to N ($/ac)",
+        yaxis = list(title = list(text = "Return to N ($/ac, ± 1 SD)",
                                   font = list(size = 15))),
         yaxis2 = yield_y,
         hovermode = "x unified",
@@ -535,7 +537,7 @@ server <- function(input, output, session) {
       layout(xaxis = list(dtick = 25,
                           title = list(text =  "N fertilizer (N lb/ac)",
                                        font = list(size = 15))),
-             yaxis = list(title = list(text = "NO<sub>3</sub> leaching (lb/ac)",
+             yaxis = list(title = list(text = "NO<sub>3</sub> leaching (lb/ac, ± 1 SD)",
                                        font = list(size = 15))),
              yaxis2 = yield_y,
              hovermode = "x unified",
@@ -554,7 +556,7 @@ server <- function(input, output, session) {
     
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1 
-    print(stdev1)
+    #print(stdev1)
     wetDryData <- wetDryData()
     
     wet <- "none"
@@ -654,7 +656,7 @@ server <- function(input, output, session) {
       layout(xaxis = list(dtick = 25,
                           title = list(text =  "N fertilizer (N lb/ac)",
                                        font = list(size = 15))),
-             yaxis = list(title = list(text = "NO<sub>3</sub> concentration (ppm)",
+             yaxis = list(title = list(text = "NO<sub>3</sub> concentration (ppm, ± 1 SD)",
                                        font = list(size = 15))),
              yaxis2 = yield_y,
              hovermode = "x unified",
@@ -667,46 +669,55 @@ server <- function(input, output, session) {
   
   # slider UI--------------
  
- output$range <- renderUI({
+  output$slider1UI <- renderUI({
+    
+    #req(vals$count >= 1)
+    req(input$simSelect1)
+    req(selectedSite())
+    
+    tagList(
+      uiOutput("values1"),
+      br(),
+      helpText("Use the slider below to view responses at specific N rates in the table above. Default value is fertilizer N recommendation."),
+      uiOutput("range1")
+    )
+    
+  })
+  
+  output$slider2UI <- renderUI({
+    
+    req(input$simSelect2 != "None")
+
+    tagList(
+      uiOutput("values2"),
+      br(),
+      helpText("Use the slider below to view responses at specific N rates in the table above"),
+      uiOutput("range2")
+    )
+    
+  })
+  
+ output$range1 <- renderUI({
    
    maxFert <- max(dat1()$data1$fert)
    nRec <- fertRec()
    #print(maxFert)
    
    sliderInput(
-     inputId = "range_dat",
+     inputId = "range_dat1",
      label = "N fertilizer (lb/ac)",
      min = 0, max = maxFert, value = nRec, step = 1
    )
    
  })
- 
- 
-  output$sliderUI <- renderUI({
-    
-    #req(vals$count >= 1)
-    req(input$simSelect1)
-    req(selectedSite())
-  
-    tagList(
-      uiOutput("values1"),
-      br(),
-      uiOutput("values2"),
-      br(),
-      p("Use the slider to view responses at specific N rates in the table"),
-      gt_output("range")
-    )
-      
-  })
-
 
   output$values1 <- render_gt({
     
     #req(length(input$simSelect1) == 1)
-    req(input$range_dat)
+    req(input$range_dat1)
     
     newdat1 <- dat1()$data1 %>%
-      filter(fert == input$range_dat) %>% 
+      filter(fert == input$range_dat1) %>% 
       mutate(leaching = round(leach1, 1),
              yield = round(yield1, 1),
              concentration = round(conc1, 1),
@@ -730,14 +741,29 @@ server <- function(input, output, session) {
     
     })
   
+  output$range2 <- renderUI({
+    
+    maxFert <- max(dat2()$data2$fert)
+    nRec <- fertRec()
+    #print(maxFert)
+    
+    sliderInput(
+      inputId = "range_dat2",
+      label = "N fertilizer (lb/ac)",
+      min = 0, max = maxFert, value = nRec, step = 1
+    )
+    
+  })
+  
   output$values2 <- render_gt({
     
     #req(length(input$simSelect2) == 1)
-    req(input$range_dat)
+    req(input$range_dat2)
     #req(dat2())
     
     newdat2 <- dat2()$data2 %>%
-      filter(fert == input$range_dat) %>%
+      #filter(fert == 150) %>%
+      filter(fert == input$range_dat2) %>%
       mutate(leaching = round(leach2, 1),
              yield = round(yield2, 1),
              concentration = round(conc2, 1),
