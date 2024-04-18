@@ -77,7 +77,7 @@ base_map <- function() {
                 opacity = 0.5,
                 #fill = FALSE,
                 fillOpacity = 0,
-                weight = 3,
+                weight = 2,
                 layerId = ~state,
                 highlightOptions = highlightOptions(color = "#1AA7EC", weight = 3,
                                                     bringToFront = TRUE),
@@ -88,7 +88,7 @@ base_map <- function() {
                 opacity = 0.5,
                 #fill = FALSE,
                 fillOpacity = 0,
-                weight = 3,
+                weight = 2,
                 highlightOptions = highlightOptions(color = "#1AA7EC", weight = 3,
                                                     bringToFront = TRUE),
                 layerId = ~id,
@@ -97,8 +97,8 @@ base_map <- function() {
                   lng1 = ~ lon - .04, lng2 = ~ lon + .04,
                   lat1 = ~ lat - .04, lat2 = ~ lat + .04,
                   layerId = ~id,
-                  col = "#8e918f",
-                  weight = 3,
+                  col = "white",
+                  weight = 2,
                   #opacity = 0.5,
                   fillOpacity = 0,
                   opacity = 3,
@@ -110,9 +110,10 @@ base_map <- function() {
     groupOptions("county", zoomLevels = 7:14) %>%
     groupOptions("sites", zoomLevels = 9:14) %>%
     setView(lat = 43.0, lng = -92.5, zoom = 5) %>%
-    addProviderTiles("Esri.WorldImagery") %>%
-    addProviderTiles("Stadia.StamenTerrainLabels") %>%
-    addProviderTiles("Stadia.StamenTerrainLines")
+    addProviderTiles("USGS.USImageryTopo") #%>%
+    #addProviderTiles("Esri.WorldImagery") #%>%
+    #addProviderTiles("Stadia.StamenTerrainLabels") %>%
+    #addProviderTiles("Stadia.StamenTerrainLines")
 }
 
 # determine response curve--------
@@ -255,37 +256,37 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
   stdevYvar = stdevDF[[y1axis]]
   if(!is.null(stdevVar)) {
     stdev = stdevDF[[stdevVar]]
-    ymax = max(yvar, simDat$yield1, (stdevYvar + stdev))
+    ymax = max(yvar, simDat$yield, (stdevYvar + stdev))
   }
   if(is.null(stdevVar)) {
-    ymax = max(yvar, simDat$yield1)
+    ymax = max(yvar, simDat$yield)
   }
   
   base_plot <- plot_ly(data = simDat, x = ~fert) %>%
-    add_lines(y = ~ yield1, name = "Yield (bu/ac)",
+    add_lines(y = ~ yield, name = "Yield (bu/ac)",
               yaxis = "y2",
               hoverinfo = "text",
-              line = list(color = "#ff9843", width = 4, dash = "solid"),
-              hovertext = ~ paste("Yield:",round(yield1, 1), "bu/ac"),
+              line = list(color = "#5DBB63", width = 4, dash = "solid"),
+              hovertext = ~ paste("Yield:",round(yield, 1), "bu/ac"),
               legendgroup = "yield1") %>%
     add_lines(y = ~ yvar, name = paste(y1axisLabel, yaxisUnit),
               hoverinfo = "text",
               line = list(color = "#ff9843", width = 4, dash = "dot"),
-              hovertext = ~ paste0(y1axisLabel, ": ", round(yvar, 1), " ", yaxisUnit),
-              legendgroup = "net1") %>%
-    add_ribbons(data = stdevDF, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
+              hovertext = ~ paste0(y1axisLabel, ": ", round(yvar, 1)),
+              legendgroup = "net1") %>% ##TODO check legend group
+    add_ribbons(data = stdevDF, ymin = ~ yield - yld_stdev, ymax = ~ yield + yld_stdev,
                 line = list(
-                  color = "#ff9843",
+                  color = "#5DBB63",
                   width = 1,
                   opacity = 0.5),
-                fillcolor = "#ff9843",
+                fillcolor = "#5DBB63",
                 yaxis = "y2",
                 hoverinfo="none",
                 opacity = 0.5,
                 legendgroup = "yield1", showlegend = FALSE) %>%
-    add_segments(x = ~nRec, y = 0, xend = ~ nRec, yend = ymax, 
+    add_segments(x = ~nRec, y = 0, xend = ~ nRec, yend = ymax,
                  name = "N fertilizer recommendation",
-                 hoverinfo="none",    
+                 hoverinfo="none",
                  line = list(color = "black", dash="dot")) %>%
     layout(
       xaxis = list(dtick = 25,
@@ -315,17 +316,17 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
                   fillcolor = "#ff9843",
                   hoverinfo = "none",
                   opacity = 0.5,
-                  legendgroup = "conc1", showlegend = FALSE)
+                  legendgroup = "conc1", showlegend = FALSE) ## TODO check legendgroup
   }
-  
+
   if(variable == "conc") {
     base_plot <- base_plot %>%
         add_lines(y = 10, name = "EPA safe drinking water standard (10 NO<sub>3</sub> ppm)",
                   line = list(color = "#d40000", width = 2, dash = "solid"),
                   hoverinfo = "none",
-                  hovertext='EPA safe drinking water standard') 
+                  hovertext='EPA safe drinking water standard')
   }
-  
+
   return(base_plot)
   
 }
@@ -379,7 +380,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
                          wetDryDat,  wet = "none", dry = "none") {
   
   if(variable == "rtn") {
-    y1axis = "net1";
+    y1axis = "net";
     y1axisLabel = "Return to N ($/ac)";
     yaxisUnit = "$/ac";
     stdevVar = NULL;
@@ -390,10 +391,10 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
     precUnits = "bu/ac"
   }
   if(variable == "leach") {
-    y1axis = "leach1";
+    y1axis = "leaching";
     y1axisLabel = "NO<sub>3</sub> leaching (lb/ac, ± 1 SD)";
     yaxisUnit = "lb/ac";
-    stdevVar = "leach_stdev1";
+    stdevVar = "leach_stdev";
     dryY = "dryLeach";
     wetY = "wetLeach";
     y_side = "y1";
@@ -401,10 +402,10 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
     precUnits = "lb/ac"
   }
   if(variable == "conc") {
-    y1axis = "conc1";
+    y1axis = "concentration";
     y1axisLabel = "NO<sub>3</sub> concentration (ppm, ± 1 SD)";
     yaxisUnit = "ppm";
-    stdevVar = "conc_stdev1";
+    stdevVar = "conc_stdev";
     dryY = "dryConc";
     wetY = "wetConc";
     y_side = "y1";
