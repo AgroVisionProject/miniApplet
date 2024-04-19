@@ -250,7 +250,7 @@ yield_y <- list(
                standoff = 10L)
 )
 
-makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdevDF, stdevVar = NULL, nRec) {
+makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdevDF, stdevVar = NULL, nRec, var2color) {
   
   yvar = simDat[[y1axis]]
   stdevYvar = stdevDF[[y1axis]]
@@ -271,7 +271,7 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
               legendgroup = "yield1") %>%
     add_lines(y = ~ yvar, name = paste(y1axisLabel, yaxisUnit),
               hoverinfo = "text",
-              line = list(color = "#ff9843", width = 4, dash = "dot"),
+              line = list(color = var2color, width = 4, dash = "dot"),
               hovertext = ~ paste0(y1axisLabel, ": ", round(yvar, 1)),
               legendgroup = "net1") %>% ##TODO check legend group
     add_ribbons(data = stdevDF, ymin = ~ yield - yld_stdev, ymax = ~ yield + yld_stdev,
@@ -310,10 +310,10 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
     base_plot <- base_plot %>%
       add_ribbons(data = stdevDF, ymin = ~ stdevYvar - stdev, ymax = ~ stdevYvar + stdev,
                   line = list(
-                    color = "#ff9843",
+                    color = var2color,
                     width = 0.5,
                     opacity = 0),
-                  fillcolor = "#ff9843",
+                  fillcolor = var2color,
                   hoverinfo = "none",
                   opacity = 0.5,
                   legendgroup = "conc1", showlegend = FALSE) ## TODO check legendgroup
@@ -383,6 +383,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
     y1axis = "net";
     y1axisLabel = "Return to N ($/ac)";
     yaxisUnit = "$/ac";
+    var2color = "#013229"
     stdevVar = NULL;
     dryY = "dryYield";
     wetY = "wetYield";
@@ -394,6 +395,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
     y1axis = "leaching";
     y1axisLabel = "NO<sub>3</sub> leaching (lb/ac, ± 1 SD)";
     yaxisUnit = "lb/ac";
+    var2color = "#593587"
     stdevVar = "leach_stdev";
     dryY = "dryLeach";
     wetY = "wetLeach";
@@ -405,6 +407,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
     y1axis = "concentration";
     y1axisLabel = "NO<sub>3</sub> concentration (ppm, ± 1 SD)";
     yaxisUnit = "ppm";
+    var2color = "#3468c0"
     stdevVar = "conc_stdev";
     dryY = "dryConc";
     wetY = "wetConc";
@@ -415,7 +418,7 @@ makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, y
   
   base_plot <- makeBasePlot(simDat = simDat, variable = variable,
                             y1axis = y1axis, y1axisLabel = y1axisLabel, yaxisUnit = yaxisUnit,
-                            stdevDF = stdevDF, stdevVar = stdevVar, nRec = nRec)
+                            stdevDF = stdevDF, stdevVar = stdevVar, nRec = nRec, var2color = var2color)
   
   
   plt <- addWetDryLines(wetDryDat = wetDryDat, wetY = wetY, dryY = dryY, y_side = y_side, precName = precName, precUnits = precUnits,
