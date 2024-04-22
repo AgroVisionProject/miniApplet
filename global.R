@@ -27,19 +27,19 @@ county_centroids = counties %>%
   arrange(id)
 
 # load data-----------------
-leach_df <- read_csv("data/leachData.csv.gz")
-yield_df <- read_csv("data/yieldData.csv.gz")
-conc_df <- read_csv("data/concData.csv.gz")
+leach_df <- read_csv("data/leachDataSite.csv.gz")
+yield_df <- read_csv("data/yieldDataSite.csv.gz")
+conc_df <- read_csv("data/concDataSite.csv.gz")
 
-sim1Var <- read_csv("data/sim1_SD.csv.gz")
-sim2Var <- read_csv("data/sim2_SD.csv.gz")
-sim3Var <- read_csv("data/sim3_SD.csv.gz")
-sim4Var <- read_csv("data/sim4_SD.csv.gz")
+sim1Var <- read_csv("data/sim1_SDSite.csv.gz")
+sim2Var <- read_csv("data/sim2_SDSite.csv.gz")
+sim3Var <- read_csv("data/sim3_SDSite.csv.gz")
+sim4Var <- read_csv("data/sim4_SDSite.csv.gz")
 
-sim1wetdry <- read_csv("data/sim1wetdry.csv.gz")
-sim2wetdry <- read_csv("data/sim2wetdry.csv.gz")
-sim3wetdry <- read_csv("data/sim3wetdry.csv.gz")
-sim4wetdry <- read_csv("data/sim4wetdry.csv.gz")
+sim1wetdry <- read_csv("data/sim1wetdrySite.csv.gz")
+sim2wetdry <- read_csv("data/sim2wetdrySite.csv.gz")
+sim3wetdry <- read_csv("data/sim3wetdrySite.csv.gz")
+sim4wetdry <- read_csv("data/sim4wetdrySite.csv.gz")
 
 sites <- read_csv("data/sampleSitesBioGDD.csv.gz") %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
@@ -84,11 +84,11 @@ base_map <- function() {
                 options = pathOptions(pane = "states")) %>%
     addPolygons(data = counties,
                 group = "county",
-                col = "white",
+                col = "darkgrey",
                 opacity = 0.5,
                 #fill = FALSE,
                 fillOpacity = 0,
-                weight = 2,
+                weight = 3,
                 highlightOptions = highlightOptions(color = "#1AA7EC", weight = 3,
                                                     bringToFront = TRUE),
                 layerId = ~id,
@@ -97,7 +97,7 @@ base_map <- function() {
                   lng1 = ~ lon - .04, lng2 = ~ lon + .04,
                   lat1 = ~ lat - .04, lat2 = ~ lat + .04,
                   layerId = ~id,
-                  col = "white",
+                  col = "darkgrey",
                   weight = 2,
                   #opacity = 0.5,
                   fillOpacity = 0,
@@ -110,10 +110,10 @@ base_map <- function() {
     groupOptions("county", zoomLevels = 7:14) %>%
     groupOptions("sites", zoomLevels = 9:14) %>%
     setView(lat = 43.0, lng = -92.5, zoom = 5) %>%
-    addProviderTiles("USGS.USImageryTopo") #%>%
-    #addProviderTiles("Esri.WorldImagery") #%>%
-    #addProviderTiles("Stadia.StamenTerrainLabels") %>%
-    #addProviderTiles("Stadia.StamenTerrainLines")
+    #addProviderTiles("USGS.USImageryTopo") #%>%
+    addProviderTiles("Esri.WorldImagery") %>%
+    addProviderTiles("Stadia.StamenTerrainLabels") %>%
+    addProviderTiles("Stadia.StamenTerrainLines")
 }
 
 # determine response curve--------
@@ -148,7 +148,7 @@ responseCurve <- function(dataframe, fun) {
 
 # make data frame----------------------
 
-makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
+makeDF <- function(simulation, site_ID, cornPrice, fertPrice) {
   
   req(is.na(simulation) == FALSE)
   #print(paste("simulation", simulation))
@@ -160,27 +160,23 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   if(simulation == 4) {var = sim4Var}
 
   var <- var %>%
-    filter(lat == site_lat,
-           lon == site_lon)
+    filter(id == site_ID)
   
   #print(head(var))
   
   # filter by lat, lon, sim---------------
   yield_df_sum <- yield_df %>%
     filter(sim == simulation,
-           lat == site_lat,
-           lon == site_lon)
+           id == site_ID)
   #print(yield_df_sum)
 
   leach_df_sum <- leach_df %>%
     filter(sim == simulation,
-           lat == site_lat,
-           lon == site_lon)
+           id == site_ID)
 
   conc_df_sum <- conc_df %>%
     filter(sim == simulation,
-           lat == site_lat,
-           lon == site_lon)
+           id == site_ID)
 
   # create dependent vars---------------
   yieldFun <- yield_df_sum$fun
@@ -220,7 +216,7 @@ makeDF <- function(simulation, site_lat, site_lon, cornPrice, fertPrice) {
   
 }
 
-makeWetDryDF <- function(simulation, site_lat, site_lon) {
+makeWetDryDF <- function(simulation, site_ID) {
   
   req(is.na(simulation) == FALSE)
   
@@ -231,8 +227,7 @@ makeWetDryDF <- function(simulation, site_lat, site_lon) {
   
   wetDry <- wetDry %>%
     #mutate(meanFert = round(meanFert)) %>%
-    filter(lat.sims == site_lat,
-           lon.sims == site_lon) 
+    filter(id == site_ID) 
  
   return(wetDry)
   

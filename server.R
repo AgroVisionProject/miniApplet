@@ -50,7 +50,7 @@ server <- function(input, output, session) {
       lat <- as.numeric(click$lat)
       lon <- as.numeric(click$lng)
       # print("click group sites")
-      # print(click)
+      #print(click)
       site <- sites %>% filter(id == click$id)
       selectedSite(site)
       
@@ -188,14 +188,14 @@ server <- function(input, output, session) {
     req(input$cornPrice)
     req(input$fertPrice)
     #print("inside dat 1")
+    #print(selectedSite())
     
-    site_lat <- selectedSite()$lat
-    site_lon <- selectedSite()$lon
+    siteID <- selectedSite()$id
     cornPrice <- input$cornPrice
     fertPrice <- input$fertPrice
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
     
-    dataList <- makeDF(simulation = simulation1$simulation, site_lat = site_lat, site_lon = site_lon,
+    dataList <- makeDF(simulation = simulation1$simulation, site_ID = siteID,
                    cornPrice = cornPrice, fertPrice = fertPrice)  
     
     data1 <- dataList$modelDF 
@@ -217,16 +217,12 @@ server <- function(input, output, session) {
     req(selectedSite())
     req(input$simSelect2)
 
-    site_lat <- selectedSite()$lat
-    site_lon <- selectedSite()$lon
     cornPrice <- input$cornPrice
     fertPrice <- input$fertPrice
-    #NUE <- input$NUE
-    #cornTech <- input$cornImp
-    #fertEff <- input$fertImp
+    siteID <- selectedSite()$id
     simulation2 <- filter(sims, cropSystem == input$simSelect2)
 
-    dataList <- makeDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon,
+    dataList <- makeDF(sim = simulation2$simulation, site_ID = siteID,
                        cornPrice = cornPrice, fertPrice = fertPrice)
     #print(dataList)
 
@@ -250,9 +246,10 @@ server <- function(input, output, session) {
     
     site_lat <- selectedSite()$lat
     site_lon <- selectedSite()$lon
+    siteID <- selectedSite()$id
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
     
-    wetDryDF <- makeWetDryDF(sim = simulation1$simulation, site_lat = site_lat, site_lon = site_lon)
+    wetDryDF <- makeWetDryDF(sim = simulation1$simulation, site_ID = siteID)
     #print(wetDryDF)
     
     return(wetDryDF)
@@ -265,9 +262,10 @@ server <- function(input, output, session) {
     
     site_lat <- selectedSite()$lat
     site_lon <- selectedSite()$lon
+    siteID <- selectedSite()$id
     simulation2 <- filter(sims, cropSystem == input$simSelect2) 
     
-    wetDryDF <- makeWetDryDF(sim = simulation2$simulation, site_lat = site_lat, site_lon = site_lon)
+    wetDryDF <- makeWetDryDF(sim = simulation2$simulation, site_ID = siteID)
     #print(wetDryDF)
     
     return(wetDryDF)
@@ -305,7 +303,7 @@ server <- function(input, output, session) {
     req(input$simSelect1)
     req(input$simSelect2)
     req(selectedSite())
-    
+
     sim1 <- str_to_title(input$simSelect1)
     sim2 <- str_to_title(input$simSelect2)
     if(input$simSelect2 == "None") {
@@ -316,7 +314,7 @@ server <- function(input, output, session) {
       tagList(
         tags$h4(title),
         tabsetPanel(
-          tabPanel("Yield and Return to N", 
+          tabPanel("Yield and Return to N",
                    plotYldAndRtN),
           tabPanel("Yield and Nitrate Leaching",
                    plotYldAndLeach),
@@ -325,7 +323,7 @@ server <- function(input, output, session) {
           footer = "Click on legend items to add or remove variables from plot",
         )
       )
-      
+
     } else {
       title <- paste("Responses to Fertilizer N (30 year average) in", sim1, "and", sim2)
       plotYldAndRtN <- plotlyOutput('plotYield', height = "600px")
@@ -349,25 +347,25 @@ server <- function(input, output, session) {
           footer = "Click on legend items to add or remove variables from plot",
         )
       )
-      
+
     }
 
     })
 
 ## yield & return to N plot sim1-----------------------------
-  
+
   output$plotYield <- renderPlotly({
-    
+
     req(dat1())
     nRec <- fertRec1()
     #print("nrec")
     #print(nRec)
-    
+
     data1 <- dat1()$data1
-    stdev1 <- dat1()$stdev1 
+    stdev1 <- dat1()$stdev1
     #print(stdev1)
     wetDryData <- wetDryData1()
-    
+
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
@@ -383,20 +381,20 @@ server <- function(input, output, session) {
     #print(paste("dry", dry))
     #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
     makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "rtn", wet = wet, dry = dry, nRec = nRec)
-    
+
   })
-  
-  
+
+
   ## yield & return to N plot sim2-----------------------------
-  
+
   output$plotYieldReturnSim2 <- renderPlotly({
-    
+
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
     #print(stdev1)
     wetDryData <- wetDryData2()
-    
+
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
@@ -412,27 +410,27 @@ server <- function(input, output, session) {
     #print(paste("dry", dry))
     #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
     makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "rtn", wet = wet, dry = dry, nRec = nRec)
-    
-    
-    
-  })  
-  
+
+
+
+  })
+
   ## yield and leaching plot sim1----------------------
-  
+
   output$plotYieldLeachSim1 <- renderPlotly({
-    
+
     req(dat1())
     nRec <- fertRec1()
-    
+
     data1 <- dat1()$data1
     # print("plotyieldleach1")
     # print(nRec)
     # print(head(data1))
-    stdev1 <- dat1()$stdev1 
+    stdev1 <- dat1()$stdev1
     #print(head(stdev1))
     wetDryData <- wetDryData1()
     #print(head(wetDryData))
-    
+
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
@@ -446,28 +444,28 @@ server <- function(input, output, session) {
     }
     #print(paste("wet", wet))
     #print(paste("dry", dry))
-    
+
     makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "leach", wet = wet, dry = dry, nRec = nRec)
-    
+
   })
-  
+
   ## yield and leaching plot sim2------------
-  
+
   output$plotYieldLeachSim2 <- renderPlotly({
-    
+
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
-    
+
     # print("plotyieldleach2")
     # print(nRec)
     # print(head(data2))
     # print(head(stdev2))
-    
+
     #print(stdev1)
     wetDryData <- wetDryData2()
     #print(head(wetDryData))
-    
+
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
@@ -483,24 +481,24 @@ server <- function(input, output, session) {
     #print(paste("dry", dry))
     #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
     makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "leach", wet = wet, dry = dry, nRec = nRec)
-    
-    
-    
-    
+
+
+
+
   })
-  
+
   ## yield and concentration plot sim1----------------------
-  
+
   output$plotYieldConcSim1 <- renderPlotly({
-    
+
     req(dat1())
     nRec <- fertRec1()
-    
+
     data1 <- dat1()$data1
-    stdev1 <- dat1()$stdev1 
+    stdev1 <- dat1()$stdev1
     #print(stdev1)
     wetDryData <- wetDryData1()
-    
+
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
@@ -514,21 +512,21 @@ server <- function(input, output, session) {
     }
     #print(paste("wet", wet))
     #print(paste("dry", dry))
-    
+
     makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "conc", wet = wet, dry = dry, nRec = nRec)
-    
+
   })
-  
+
   ## yield and concentration plot sim2----------------------
-  
+
   output$plotYieldConcSim2 <- renderPlotly({
-    
+
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
     #print(stdev1)
     wetDryData <- wetDryData2()
-    
+
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
@@ -544,31 +542,31 @@ server <- function(input, output, session) {
     #print(paste("dry", dry))
     #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
     makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "conc", wet = wet, dry = dry, nRec = nRec)
-    
-    
+
+
   })
-  
-  
+
+
   # slider UI--------------
- 
+
   output$slider1UI <- renderUI({
-    
+
     #req(vals$count >= 1)
     req(input$simSelect1)
     req(selectedSite())
     print(input$simSelect2)
-    
+
     tagList(
       uiOutput("values1"),
       br(),
       helpText("Use the slider below to view responses at specific N rates in the table above. Default value is fertilizer N recommendation."),
       uiOutput("range1")
     )
-    
+
   })
-  
+
   output$slider2UI <- renderUI({
-    
+
     req(input$simSelect2 != "None")
 
     tagList(
@@ -577,39 +575,39 @@ server <- function(input, output, session) {
       helpText("Use the slider below to view responses at specific N rates in the table above"),
       uiOutput("range2")
     )
-    
+
   })
-  
+
  output$range1 <- renderUI({
-   
+
    maxFert <- max(dat1()$data1$fert)
    nRec <- fertRec1()
    #print(maxFert)
-   
+
    sliderInput(
      inputId = "range_dat1",
      label = "N fertilizer (lb/ac)",
      min = 0, max = maxFert, value = nRec, step = 1
    )
-   
+
  })
 
   output$values1 <- render_gt({
-    
+
     #req(length(input$simSelect1) == 1)
     req(input$range_dat1)
     #print(dat1()$data1)
-    
+
     newdat1 <- dat1()$data1 %>%
-      filter(fert == input$range_dat1) %>% 
+      filter(fert == input$range_dat1) %>%
       mutate(leaching = round(leaching, 1),
              yield = round(yield, 1),
              concentration = round(concentration, 1),
              net = round(net, 1))
-    
+
     # remove duplicates
     newdat1 <- newdat1[1,]
-  
+
     newdat1 %>%
       select(c(fert, yield, leaching, concentration, net)) %>%
       gt() %>%
@@ -622,29 +620,29 @@ server <- function(input, output, session) {
         .fn = md
       ) %>%
       tab_header(title = paste(input$simSelect1, "output"))
-    
+
     })
-  
+
   output$range2 <- renderUI({
-    
+
     maxFert <- max(dat2()$data2$fert)
     nRec <- fertRec2()
     #print(maxFert)
-    
+
     sliderInput(
       inputId = "range_dat2",
       label = "N fertilizer (lb/ac)",
       min = 0, max = maxFert, value = nRec, step = 1
     )
-    
+
   })
-  
+
   output$values2 <- render_gt({
-    
+
     #req(length(input$simSelect2) == 1)
     req(input$range_dat2)
     #req(dat2())
-    
+
     newdat2 <- dat2()$data2 %>%
       #filter(fert == 150) %>%
       filter(fert == input$range_dat2) %>%
@@ -652,10 +650,10 @@ server <- function(input, output, session) {
              yield = round(yield, 1),
              concentration = round(concentration, 1),
              net = round(net, 1))
-    
+
     # remove duplicates
     newdat2 <- newdat2[1,]
-    
+
     newdat2 %>%
       select(c(fert, yield, leaching, concentration, net)) %>%
       gt() %>%
@@ -671,7 +669,7 @@ server <- function(input, output, session) {
   })
 
   # download data--------------
-  
+
   shinyjs::disable("download")
   observeEvent(dat1(), {
     shinyjs::enable("download")
