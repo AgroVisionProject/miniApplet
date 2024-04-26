@@ -27,19 +27,19 @@ county_centroids = counties %>%
   arrange(id)
 
 # load data-----------------
-leach_df <- read_csv("data/leachDataSite.csv.gz")
-yield_df <- read_csv("data/yieldDataSite.csv.gz")
-conc_df <- read_csv("data/concDataSite.csv.gz")
+leach_df <- read_csv("data/leachDataSiteUpdate.csv.gz")
+yield_df <- read_csv("data/yieldDataSiteUpdate.csv.gz")
+conc_df <- read_csv("data/concDataSiteUpdate.csv.gz")
 
-sim1Var <- read_csv("data/sim1_SDSite.csv.gz")
-sim2Var <- read_csv("data/sim2_SDSite.csv.gz")
-sim3Var <- read_csv("data/sim3_SDSite.csv.gz")
-sim4Var <- read_csv("data/sim4_SDSite.csv.gz")
+sim1Var <- read_csv("data/sim1_SDUpdateSite.csv.gz")
+sim2Var <- read_csv("data/sim2_SDUpdateSite.csv.gz")
+sim3Var <- read_csv("data/sim3_SDUpdateSite.csv.gz")
+sim4Var <- read_csv("data/sim4_SDUpdateSite.csv.gz")
 
-sim1wetdry <- read_csv("data/sim1wetdrySite.csv.gz")
-sim2wetdry <- read_csv("data/sim2wetdrySite.csv.gz")
-sim3wetdry <- read_csv("data/sim3wetdrySite.csv.gz")
-sim4wetdry <- read_csv("data/sim4wetdrySite.csv.gz")
+sim1wetdry <- read_csv("data/sim1wetdryUpdateSite.csv.gz")
+sim2wetdry <- read_csv("data/sim2wetdryUpdateSite.csv.gz")
+sim3wetdry <- read_csv("data/sim3wetdryUpdateSite.csv.gz")
+sim4wetdry <- read_csv("data/sim4wetdryUpdateSite.csv.gz")
 
 sites <- read_csv("data/sampleSitesBioGDD.csv.gz") %>%
   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F) %>%
@@ -204,13 +204,17 @@ makeDF <- function(simulation, site_ID, cornPrice, fertPrice) {
 
   # join modeled DF and variance------------
   model_var <- left_join(modelDF, var, relationship = "many-to-many") 
-  maxFert <- max(var$fert)  # modelDF max fert should be var max fert
-  modelDF <- filter(modelDF, fert < maxFert)
+  print(tail(modelDF))
 
   # create stdev column for each variable------------
   stdev_wide <- model_var %>%
     drop_na(stdev) %>%
     pivot_wider(values_from = stdev, names_from = "variable", names_prefix = "stdev_")
+  
+  maxFert <- max(stdev_wide$fert)  # modelDF max fert should be var max fert
+  print(maxFert)
+  modelDF <- filter(modelDF, fert < maxFert)
+  print(tail(stdev_wide))
 
   return(list(modelDF = modelDF, stdevDF = stdev_wide))
   
@@ -236,66 +240,97 @@ makeWetDryDF <- function(simulation, site_ID) {
 
 # plot bones-----------------------
 
-yield_y <- list(
-  tickfont = list(color = "black"),
-  overlaying = "y",
+
+rtn_axis <- list(
+  #tickfont = list(color = "black"),
+  overlaying = "y1",
+  #anchor = "free",
+  #position = 0,
+  color = "#013229",
   side = "right",
-  title = list(text = "Yield (bu/ac, ± 1 SD) ",
-               font = list(size = 15),
+  title = list(text = "Return to N ($/ac)",
+               font = list(size = 15, color = "#013229"),
                standoff = 10L)
 )
 
-makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdevDF, stdevVar = NULL, nRec, var2color) {
+leach_axis <- list(
+  #tickfont = list(color = "black"),
+  overlaying = "y",
+  side = "right",
+  color = "#593587",
+  title = list(text = "NO<sub>3</sub> leaching (lb/ac) (± 1 SD)",
+               font = list(size = 15, color = "#593587"),
+               standoff = 10L)
+)
+
+conc_axis <- list(
+  #tickfont = list(color = "black"),
+  overlaying = "y",
+  side = "right",
+  color = "#1F5E96",
+  title = list(text = "NO<sub>3</sub> concentration (ppm) (± 1 SD)",
+               font = list(size = 15, color = "#1F5E96"),
+               standoff = 10L)
+)
+
+makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, y2, stdevDF, stdevVar = NULL, nRec, var2color) {
   
   yvar = simDat[[y1axis]]
   stdevYvar = stdevDF[[y1axis]]
+  # print(max(yvar))
+  # print(max(simDat$yield))
+  # print(max(stdevDF$yield + stdevDF$yld_stdev))
   if(!is.null(stdevVar)) {
     stdev = stdevDF[[stdevVar]]
-    ymax = max(yvar, simDat$yield, (stdevYvar + stdev))
+    ymax = max(yvar, simDat$yield, (stdevDF$yield + stdevDF$yld_stdev))
   }
   if(is.null(stdevVar)) {
-    ymax = max(yvar, simDat$yield)
+    ymax = max(yvar, simDat$yield, (simDat$yield + simDat$yld_stdev))
   }
+  #print(ymax)
   
   base_plot <- plot_ly(data = simDat, x = ~fert) %>%
     add_lines(y = ~ yield, name = "Yield (bu/ac)",
+              yaxis = "y1",
+              hoverinfo = "text",
+              line = list(color = "#3B9422", width = 4, dash = "solid"),
+              hovertext = ~ paste("Yield:",round(yield, 1)),
+              legendgroup = "yield1") %>%
+    add_lines(y = ~ yvar, name = paste0(y1axisLabel, " (", yaxisUnit, ")"),
               yaxis = "y2",
               hoverinfo = "text",
-              line = list(color = "#5DBB63", width = 4, dash = "solid"),
-              hovertext = ~ paste("Yield:",round(yield, 1), "bu/ac"),
-              legendgroup = "yield1") %>%
-    add_lines(y = ~ yvar, name = paste(y1axisLabel, yaxisUnit),
-              hoverinfo = "text",
-              line = list(color = var2color, width = 4, dash = "dot"),
+              line = list(color = var2color, width = 4, dash = "solid"),
               hovertext = ~ paste0(y1axisLabel, ": ", round(yvar, 1)),
               legendgroup = "net1") %>% ##TODO check legend group
     add_ribbons(data = stdevDF, ymin = ~ yield - yld_stdev, ymax = ~ yield + yld_stdev,
                 line = list(
-                  color = "#5DBB63",
+                  color = "#3B9422",
                   width = 1,
-                  opacity = 0.5),
-                fillcolor = "#5DBB63",
-                yaxis = "y2",
+                  opacity = 0.3),
+                fillcolor = "#3B9422",
+                yaxis = "y1",
                 hoverinfo="none",
-                opacity = 0.5,
+                opacity = 0.3,
                 legendgroup = "yield1", showlegend = FALSE) %>%
     add_segments(x = ~nRec, y = 0, xend = ~ nRec, yend = ymax,
                  name = "N fertilizer recommendation",
                  hoverinfo="none",
+                 #yaxis = "y2",
                  line = list(color = "black", dash="dot")) %>%
     layout(
       xaxis = list(dtick = 25,
                    title = list(text =  "N fertilizer (N lb/ac)",
                                 font = list(size = 15))),
-      yaxis = list(title = list(text = y1axisLabel,
-                                font = list(size = 15))),
-      yaxis2 = yield_y,
+      yaxis = list(title = list(text = "Yield (bu/ac) (± 1 SD)",
+                                font = list(size = 15, color = "#2A7315")),
+                   color = "#2A7315"),
+      yaxis2 = y2,
       shapes = list(list(type = "rect", fillcolor = "#222222", line = list(color = "#222222"),
                        opacity = 0.2, y0 = 0, y1 = ymax, x0 = nRec-(.1*nRec), x1 = nRec+(.1*nRec))
                     ),
       hovermode = "x unified",
       margin = list(r = 50, b = 10, t = 50),
-      legend = list(orientation = 'h', y = -0.5,
+      legend = list(orientation = 'h', y = -0.2,
                     font = list(size = 14))
     ) 
   
@@ -309,8 +344,9 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
                     width = 0.5,
                     opacity = 0),
                   fillcolor = var2color,
+                  yaxis = "y2",
                   hoverinfo = "none",
-                  opacity = 0.5,
+                  opacity = 0.3,
                   legendgroup = "conc1", showlegend = FALSE) ## TODO check legendgroup
   }
 
@@ -326,17 +362,28 @@ makeBasePlot <- function(simDat, variable, y1axis, y1axisLabel, yaxisUnit, stdev
   
 }
 
-#base_plot <- makeBasePlot(simDat = modelDF1,variable = "rtn", y1axis = "net1", y1axisLabel = "Return to N", yaxisUnit = "$/ac",stdevDF = stdevDF) 
-# makeBasePlot(simDat = modelDF1, variable = "conc", y1axis = "conc1", y1axisLabel = "Nitrate concentration", yaxisUnit = "ppm",
-#              stdevDF = stdevDF, stdevVar = "conc_stdev1")
-# makeBasePlot(simDat = modelDF1, variable = "leach", y1axis = "leach1", y1axisLabel = "Nitrate concentration", yaxisUnit = "lb/ac",
-#              stdevDF = stdevDF, stdevVar = "leach_stdev1")
+# base_plot_rtn <- makeBasePlot(simDat = modelDF1,variable = "rtn", y1axis = "net", y1axisLabel = "Return to N", yaxisUnit = "$/ac",
+#                           stdevDF = stdevDF, y2 = rtn_axis, var2color = "#013229", nRec = 140) 
+# 
+# base_plot_conc <- makeBasePlot(simDat = modelDF1, variable = "conc", y1axis = "conc", y1axisLabel = "Nitrate concentration", yaxisUnit = "ppm",
+#              stdevDF = stdevDF, stdevVar = "conc_stdev", y2 = conc_axis, var2color = "#1F5E96",nRec = 140)
+# base_plot_leach <- makeBasePlot(simDat = modelDF1, variable = "leach", y1axis = "leach", y1axisLabel = "Nitrate concentration", yaxisUnit = "lb/ac",
+#              stdevDF = stdevDF, stdevVar = "leach_stdev", y2 = leach_axis, var2color = "#593587",nRec = 140)
 
 
-addWetDryLines <- function(wetDryDat, wetY, dryY, y_side, precName, precUnits, wet = "none", dry = "none", base_plot = base_plot) {
+addWetDryLines <- function(wetDryDat, wetY, dryY, y_side, precName, precUnits, variable, wet = "none", dry = "none", base_plot = base_plot) {
   
   dryVar = wetDryDat[[dryY]]
   wetVar = wetDryDat[[wetY]]
+  if(variable == "rtn") {
+    color = "#3c8f41"
+  }
+  if(variable == "leach") {
+    color = "#351f50"
+  }
+  if(variable == "conc") {
+    color = "#244784"
+  }
   
   if(wet == "none" & dry == "none") { # return base plot if wet and dry are null
     #print("base")
@@ -344,80 +391,92 @@ addWetDryLines <- function(wetDryDat, wetY, dryY, y_side, precName, precUnits, w
   } else if (wet == "wet" & dry == "none") { # return base plot plus wet if wet is checked
     #print(paste("wet", is.null(wet)))
     plt <- base_plot %>%
-      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~wetVar, name = paste("Wettest", precName),
-                line = list(color = "blue", width = 4, dash = "solid"), yaxis = y_side,
-                hovertext = ~ paste0("Wet ", precName, ": ",round(wetVar, 1), " ", precUnits))
+      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~wetVar, name = paste("Wet", precName),
+                line = list(color = color, width = 2, dash = "dash"), yaxis = y_side,
+                hoverinfo = "text",
+                hovertext = ~ paste0("Wet ", precName, ": ",round(wetVar, 1)))
   } else if (wet == "none" & dry == "dry") { # return base plot plus dry if dry is checked
     #print("dry")
     plt <- base_plot %>%
-      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~dryVar, name = paste("Driest", precName),
-                line = list(color = "blue", width = 4, dash = "dash"), yaxis = y_side,
-                hovertext = ~ paste0("Dry ", precName, ": ",round(dryVar, 1), " ", precUnits))
+      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~dryVar, name = paste("Dry", precName),
+                line = list(color = color, width = 2, dash = "dot"), yaxis = y_side,
+                hoverinfo = "text",
+                hovertext = ~ paste0("Dry ", precName, ": ",round(dryVar, 1)))
   } else { # both are checked
     #print("both")
     plt <- base_plot %>%
-      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~dryVar, name = paste("Driest", precName),
-                line = list(color = "blue", width = 4, dash = "dash"), yaxis = y_side,
-                hovertext = ~ paste0("Dry ", precName, ": ",round(dryVar, 1), " ", precUnits)) %>%
-      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~wetVar, name = paste("Wettest", precName),
-                line = list(color = "blue", width = 4, dash = "solid"),yaxis = y_side,
-                hovertext = ~ paste0("Wet ", precName, ": ",round(wetVar, 1), " ", precUnits))
+      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~dryVar, name = paste("Dry", precName),
+                line = list(color = color, width = 2, dash = "dot"), yaxis = y_side,
+                hoverinfo = "text",
+                hovertext = ~ paste0("Dry ", precName, ": ",round(dryVar, 1))) %>%
+      add_lines(data = wetDryDat, x = ~fertilizerLbsAc, y = ~wetVar, name = paste("Wet", precName),
+                line = list(color = color, width = 2, dash = "dash"),yaxis = y_side,
+                hoverinfo = "text",
+                hovertext = ~ paste0("Wet ", precName, ": ",round(wetVar, 1)))
   }
   
   plt
 }
 
-# addWetDryLines(wetDryDat = wetDryData,
-#                wetY = "wetYield", dryY = "dryYield", y_side = "y2", precName = "yield", precUnits = "bu/ac", wet = "wet", dry = "dry",
-#                base_plot = base_plot)
+# addWetDryLines(wetDryDat = wetDryData, wetY = "wetYield", dryY = "dryYield", y_side = "y1", precName = "yield", precUnits = "bu/ac", wet = "wet", dry = "dry",
+#                base_plot = base_plot_rtn, variable = "rtn")
+# 
+# addWetDryLines(wetDryDat = wetDryData, wetY = "wetLeach", dryY = "dryLeach", y_side = "y2", precName = "leach", precUnits = "lb/ac", wet = "wet", dry = "dry",
+#                base_plot = base_plot_leach, variable = "leach")
+# 
+# addWetDryLines(wetDryDat = wetDryData, wetY = "wetConc", dryY = "dryConc", y_side = "y2", precName = "concentration", precUnits = "ppm", wet = "wet", dry = "dry",
+#                base_plot = base_plot_conc, variable = "conc")
 
 makeSim1plot <- function(simDat, stdevDF, variable, nRec,#y1axis, y1axisLabel, yaxisUnit, dryY, wetY, precName,
                          wetDryDat,  wet = "none", dry = "none") {
   
   if(variable == "rtn") {
+    y2 = rtn_axis;
     y1axis = "net";
-    y1axisLabel = "Return to N ($/ac)";
+    y1axisLabel = "Return to N";
     yaxisUnit = "$/ac";
-    var2color = "#013229"
+    var2color = "#013229";
     stdevVar = NULL;
     dryY = "dryYield";
     wetY = "wetYield";
-    y_side = "y2";
+    y_side = "y1";
     precName = "yield";
     precUnits = "bu/ac"
   }
   if(variable == "leach") {
+    y2 = leach_axis;
     y1axis = "leaching";
-    y1axisLabel = "NO<sub>3</sub> leaching (lb/ac, ± 1 SD)";
+    y1axisLabel = "NO<sub>3</sub> leaching";
     yaxisUnit = "lb/ac";
-    var2color = "#593587"
+    var2color = "#593587";
     stdevVar = "leach_stdev";
     dryY = "dryLeach";
     wetY = "wetLeach";
-    y_side = "y1";
+    y_side = "y2";
     precName = "leach";
     precUnits = "lb/ac"
   }
   if(variable == "conc") {
+    y2 = conc_axis;
     y1axis = "concentration";
-    y1axisLabel = "NO<sub>3</sub> concentration (ppm, ± 1 SD)";
+    y1axisLabel = "NO<sub>3</sub> concentration";
     yaxisUnit = "ppm";
-    var2color = "#3468c0"
+    var2color = "#1F5E96";
     stdevVar = "conc_stdev";
     dryY = "dryConc";
     wetY = "wetConc";
-    y_side = "y1";
+    y_side = "y2";
     precName = "concentration";
     precUnits = "ppm"
   }
   
   base_plot <- makeBasePlot(simDat = simDat, variable = variable,
                             y1axis = y1axis, y1axisLabel = y1axisLabel, yaxisUnit = yaxisUnit,
-                            stdevDF = stdevDF, stdevVar = stdevVar, nRec = nRec, var2color = var2color)
+                            stdevDF = stdevDF, stdevVar = stdevVar, nRec = nRec, var2color = var2color, y2 = y2)
   
   
   plt <- addWetDryLines(wetDryDat = wetDryDat, wetY = wetY, dryY = dryY, y_side = y_side, precName = precName, precUnits = precUnits,
-                        wet = wet, dry = dry, base_plot = base_plot)
+                        wet = wet, dry = dry, base_plot = base_plot, variable = variable)
   
   plt
   
@@ -464,7 +523,7 @@ determineFertRec <- function(simulation, site, cornPrice, fertPrice) {
 # makeYldplot(simDat = simData, wetDryDat = wetDryData, wet = "wet", dry = "dry")
 
 # test data set----------------
-
+# 
 # yield_df_sum <- yield_df %>%
 #   filter(sim == 1,
 #          STATE_NAME == "Wisconsin",
@@ -488,8 +547,7 @@ determineFertRec <- function(simulation, site, cornPrice, fertPrice) {
 # concFun <- conc_df_sum$fun
 # 
 # var <- sim1Var %>%
-#   filter(lat == yield_df_sum$lat,
-#          lon == yield_df_sum$lon)
+#   filter(id == yield_df_sum$id)
 # 
 # 
 # yield_y <- responseCurve(dataframe = yield_df_sum, fun = yieldFun)
@@ -504,12 +562,12 @@ determineFertRec <- function(simulation, site, cornPrice, fertPrice) {
 # nloss <- NUE * leach_y * fertPrice
 # net <- cornVal - fertCost - nloss
 # 
-# modelDF1 <- data.frame(fert = round(kgha_to_lbac(fert)), yield1 = yield_y,
-#                       leach1 = kgha_to_lbac(leach_y), conc1 = conc_y,
-#                       net1 = net)
+# modelDF1 <- data.frame(fert = round(kgha_to_lbac(fert)), yield = yield_y,
+#                       leach = kgha_to_lbac(leach_y), conc = conc_y,
+#                       net = net)
 # 
 #  wetDryData <- sim1wetdry %>%
-#    right_join(yield_df_sum, by = c("lon.sims" = "lon", "lat.sims" = "lat"))
+#    filter(id == yield_df_sum$id)
 # # # modelDF
 # #
 # var1 <- var %>%
@@ -522,21 +580,21 @@ determineFertRec <- function(simulation, site, cornPrice, fertPrice) {
 # maxFert <- max(var1$fert)
 # modelDF1 <- filter(modelDF1, fert < maxFert)
 # print(maxFert)
-# print(nrow(modelDF))
+# 
 # 
 # # create stdev column for each variable
 # stdevDF <- model_var1 %>%
 #   drop_na(stdev) %>%
 #   pivot_wider(values_from = stdev, names_from = "variable", names_prefix = "stdev_") %>%
-#   rename(yld_stdev1 = stdev_cropyld, leach_stdev1 = stdev_no3leach, conc_stdev1 = stdev_no3conc)
-#print("stdev_wide")
+#   rename(yld_stdev = stdev_cropyld, leach_stdev = stdev_no3leach, conc_stdev = stdev_no3conc)
+print("stdev_wide")
 
 # head(stdev_wide1)
 # ##TODO how do I align the ribbons and lines?
 # plot_ly(modelDF1, x = ~fert, y = ~ yield1, name = "Yield (bu/ac)",
 #         type = 'scatter', mode = 'lines',
-#         line = list(color = "#5dbb63", width = 2),
-#         #marker = list(size = 1, color = "#5dbb63"),
+#         line = list(color = "#3B9422", width = 2),
+#         #marker = list(size = 1, color = "#3B9422"),
 #         hovertext = ~ paste("Yield:", round(yield1, 1), "bu/ac"),
 #         hoverinfo = "text",
 #         legendgroup = "yield") %>%
@@ -565,11 +623,11 @@ determineFertRec <- function(simulation, site, cornPrice, fertPrice) {
 #   #           showlegend = F) %>%
 #   add_ribbons(data = stdev_wide1, x = ~ fert, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
 #               line = list(
-#                 color = "#5dbb63",
+#                 color = "#3B9422",
 #                 width = 0.5,
 #                 opacity = 0),
 #               hovertext = ~paste("yield: ±", round(yld_stdev1)),
-#               fillcolor = "#5dbb63",
+#               fillcolor = "#3B9422",
 #               opacity = 0.5,
 #               legendgroup = "yield", showlegend = FALSE) %>%
 #   add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
@@ -662,47 +720,47 @@ determineFertRec <- function(simulation, site, cornPrice, fertPrice) {
 # ##TODO start here
 # p <- plot_ly(data = modelDF1, x = ~fert, hoverinfo = "text") %>%
 #   add_lines(y = ~ yield1, name = paste("sim1", "yield (bu/ac)"),
-#             line = list(color = "#5dbb63", width = 2, dash = "solid"),
+#             line = list(color = "#3B9422", width = 2, dash = "solid"),
 #             hovertext = ~ paste("sim1", "yield:",round(yield1, 1), "bu/ac"),
 #             #hoverinfo = "text",
 #             legendgroup = "yield1") %>%
 #   add_lines(y = ~ leach1, name = paste("sim1", "NO3 leaching (lb/ac)"),
-#             line = list(color = "#5dbb63", width = 2, dash = "dash"),
+#             line = list(color = "#3B9422", width = 2, dash = "dash"),
 #             hovertext = ~paste("sim1", "nitrate leaching:",round(leach1, 1), "lbs/ac"),
 #             hoverinfo = "text",
 #             legendgroup = "leach1") %>%
 #   add_lines(y = ~ conc1, name = paste("sim1", "NO3 concentration (ppm)"),
-#             line = list(color = "#5dbb63", width = 2, dash = "dot"),
+#             line = list(color = "#3B9422", width = 2, dash = "dot"),
 #             hovertext = ~ paste("sim1", "nitrate concentration:", round(conc1, 1), "ppm"),
 #             hoverinfo = "text",
 #             legendgroup = "conc1") %>%
 #   add_lines(y = ~ net1, name = paste("sim1", "return to N ($/ac)"),
-#             line = list(color = "#5dbb63", width = 3, dash = "dashdot"),
+#             line = list(color = "#3B9422", width = 3, dash = "dashdot"),
 #             hovertext = ~ paste("sim1", "return to N:", round(net1, 1), "$/ac"),
 #             hoverinfo = "text",
 #             legendgroup = "net1") %>%
 #   add_ribbons(data = stdev_wide1, ymin = ~ yield1 - yld_stdev1, ymax = ~ yield1 + yld_stdev1,
 #               line = list(
-#                 color = "#5dbb63"),
-#               fillcolor = "#5dbb63",
+#                 color = "#3B9422"),
+#               fillcolor = "#3B9422",
 #               hovertext = ~paste("sim1", "yield:", "±", round(yld_stdev1)),
 #               opacity = 0.5,
 #               legendgroup = "yield1", showlegend = FALSE) %>%
 #   add_ribbons(ymin = ~ leach1 - leach_stdev1, ymax = ~ leach1 + leach_stdev1,
 #               line = list(
-#                 color = "#5dbb63",
+#                 color = "#3B9422",
 #                 width = 0.5,
 #                 opacity = 0),
-#               fillcolor = "#5dbb63",
+#               fillcolor = "#3B9422",
 #               hovertext = ~paste("nitrate leach: ±", round(leach_stdev1, 1)),
 #               opacity = 0.5,
 #               legendgroup = "leach1", showlegend = FALSE) %>%
 #   add_ribbons(ymin = ~ conc1 - conc_stdev1, ymax = ~ conc1 + conc_stdev1,
 #               line = list(
-#                 color = "#5dbb63",
+#                 color = "#3B9422",
 #                 width = 0.5,
 #                 opacity = 0),
-#               fillcolor = "#5dbb63",
+#               fillcolor = "#3B9422",
 #               hovertext = ~paste("nitrate concentration: ±", round(conc_stdev1, 1)),
 #               opacity = 0.5,
 #               legendgroup = "conc1", showlegend = FALSE)  %>%
