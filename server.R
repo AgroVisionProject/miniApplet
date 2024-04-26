@@ -135,19 +135,19 @@ server <- function(input, output, session) {
     
     #req(input$simSelect2 == "None")
     checkboxGroupInput(inputId = "wetDry",
-                label = "Display wettest or driest years",
+                label = "Display wet or dry years",
                 choices = c("Wettest 5 years", "Driest 5 years"),
                 selected = NULL)
     
   })
   
-  observeEvent(input$simSelect2, {
-    if(input$simSelect2 != "None") {
-      shinyjs::disable('wetDry')
-    } else {
-      shinyjs::enable('wetDry')
-    }
-  })
+  # observeEvent(input$simSelect2, {
+  #   if(input$simSelect2 != "None") {
+  #     shinyjs::disable('wetDry')
+  #   } else {
+  #     shinyjs::enable('wetDry')
+  #   }
+  # })
   
   
   
@@ -250,7 +250,7 @@ server <- function(input, output, session) {
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
     
     wetDryDF <- makeWetDryDF(sim = simulation1$simulation, site_ID = siteID)
-    #print(wetDryDF)
+    print(wetDryDF)
     
     return(wetDryDF)
     
@@ -364,7 +364,8 @@ server <- function(input, output, session) {
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1
     #print(stdev1)
-    wetDryData <- wetDryData1()
+    wetDryData <- wetDryData1() %>%
+      filter(fertilizerLbsAc <= max(data1$fert))
 
     wet <- "none"
     dry <- "none"
@@ -393,7 +394,8 @@ server <- function(input, output, session) {
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
     #print(stdev1)
-    wetDryData <- wetDryData2()
+    wetDryData <- wetDryData2() %>%
+      filter(fertilizerLbsAc <= max(data2$fert))
 
     wet <- "none"
     dry <- "none"
@@ -428,7 +430,8 @@ server <- function(input, output, session) {
     # print(head(data1))
     stdev1 <- dat1()$stdev1
     #print(head(stdev1))
-    wetDryData <- wetDryData1()
+    wetDryData <- wetDryData1() %>%
+      filter(fertilizerLbsAc <= max(data1$fert))
     #print(head(wetDryData))
 
     wet <- "none"
@@ -463,7 +466,8 @@ server <- function(input, output, session) {
     # print(head(stdev2))
 
     #print(stdev1)
-    wetDryData <- wetDryData2()
+    wetDryData <- wetDryData2() %>%
+      filter(fertilizerLbsAc <= max(data2$fert))
     #print(head(wetDryData))
 
     wet <- "none"
@@ -497,7 +501,8 @@ server <- function(input, output, session) {
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1
     #print(stdev1)
-    wetDryData <- wetDryData1()
+    wetDryData <- wetDryData1() %>%
+      filter(fertilizerLbsAc <= max(data1$fert))
 
     wet <- "none"
     dry <- "none"
@@ -525,7 +530,8 @@ server <- function(input, output, session) {
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
     #print(stdev1)
-    wetDryData <- wetDryData2()
+    wetDryData <- wetDryData2() %>%
+      filter(fertilizerLbsAc <= max(data2$fert))
 
     wet <- "none"
     dry <- "none"

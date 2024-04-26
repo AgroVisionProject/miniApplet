@@ -7,14 +7,15 @@ ui <- fluidPage(
   ),
   
   titlePanel(fluidRow(
-    column(2, #offset = 1,
-           img(src = "uw-crest.png", height = 80)),
-    column(8, align = "center",
-           "Nitrogen Decision Support Tool for Corn Management"),
-    column(2, #offset = -1,
-           img(src = "grasslandColorCenter.png", height = 80)))
+    column(9, align = "center",
+           h2("Nitrogen Decision Support Tool for Corn Management"), 
+           h4("Assess the impact of land use and N fertilizer applications on nitrogen losses to groundwater")),
+    column(3, align = "center",
+           img(src = "uw-crest.png", height = 80)))
     ),
-  
+  # fluidRow(column(12, align = "center", 
+  #                 h3("Assess the impact of land use and N fertilizer applications on nitrogen losses to groundwater"))),
+  # 
   bsCollapse(id = "methods",
              bsCollapsePanel("Methods", style = "success", # default, info, warning
               "Text here"
