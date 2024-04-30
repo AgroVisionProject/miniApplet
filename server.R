@@ -150,7 +150,6 @@ server <- function(input, output, session) {
   # })
   
   
-  
   observeEvent(input$simSelect1, {
     
     updateCheckboxGroupInput(session, "wetDry",
@@ -239,6 +238,31 @@ server <- function(input, output, session) {
     
   })
   
+  ##ymax-----------------
+  ymax1 <- reactiveVal()
+  ymax2 <- reactiveVal()
+  
+  observe({
+    req(dat1())
+    
+    ymax = max(max(dat1()$data1$net), c(max(dat1()$data1$yield) + max(dat1()$stdev1$yld_stdev)))
+    #print("observed dat 1 ymax")
+    ymax1(ymax)
+    
+  })
+  
+  observe({
+    #req(dat1())
+    req(dat2())
+
+    ymax = max(max(dat1()$data1$net), c(max(dat1()$data1$yield) + max(dat1()$stdev1$yld_stdev)),
+           max(dat2()$data2$net), c(max(dat2()$data2$yield) + max(dat2()$stdev2$yld_stdev)))
+    #print("observed dat 2 ymax")
+    ymax2(ymax)
+
+  })
+  
+  
   ## wet dry data----------
   wetDryData1 <- reactive({
     
@@ -250,7 +274,7 @@ server <- function(input, output, session) {
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
     
     wetDryDF <- makeWetDryDF(sim = simulation1$simulation, site_ID = siteID)
-    print(wetDryDF)
+    #print(wetDryDF)
     
     return(wetDryDF)
     
@@ -356,6 +380,7 @@ server <- function(input, output, session) {
   
   output$plotYield <- renderPlotly({
     
+    
     req(dat1())
     nRec <- fertRec1()
     #print("nrec")
@@ -363,6 +388,17 @@ server <- function(input, output, session) {
     
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1
+    if(is.null(ymax2())) {
+      #print("null")
+      ymax <- ymax1()
+    } else {
+      ymax <- max(ymax1(), ymax2())
+    }
+    #ymax <- ymax1()
+    # print("inside plot1")
+    # print("ymax")
+    # print(ymax1())
+    # print(ymax)
     #print(stdev1)
     wetDryData <- wetDryData1() %>%
       filter(fertilizerLbsAc <= max(data1$fert))
@@ -381,7 +417,8 @@ server <- function(input, output, session) {
     #print(paste("wet", wet))
     #print(paste("dry", dry))
     #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
-    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "rtn", wet = wet, dry = dry, nRec = nRec)
+    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "rtn", ymax = ymax,
+                 wet = wet, dry = dry, nRec = nRec)
     
   })
   
@@ -393,6 +430,7 @@ server <- function(input, output, session) {
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
+    ymax <- max(ymax1(),ymax2())
     #print(stdev1)
     wetDryData <- wetDryData2() %>%
       filter(fertilizerLbsAc <= max(data2$fert))
@@ -411,7 +449,8 @@ server <- function(input, output, session) {
     #print(paste("wet", wet))
     #print(paste("dry", dry))
     #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
-    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "rtn", wet = wet, dry = dry, nRec = nRec)
+    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "rtn", ymax = ymax,
+                 wet = wet, dry = dry, nRec = nRec)
     
     
     
@@ -425,10 +464,12 @@ server <- function(input, output, session) {
     nRec <- fertRec1()
     
     data1 <- dat1()$data1
-    # print("plotyieldleach1")
-    # print(nRec)
-    # print(head(data1))
     stdev1 <- dat1()$stdev1
+    if(is.null(ymax2())) {
+      ymax <- ymax1()
+    } else {
+      ymax <- max(ymax1(), ymax2())
+    }
     #print(head(stdev1))
     wetDryData <- wetDryData1() %>%
       filter(fertilizerLbsAc <= max(data1$fert))
@@ -448,7 +489,8 @@ server <- function(input, output, session) {
     #print(paste("wet", wet))
     #print(paste("dry", dry))
     
-    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "leach", wet = wet, dry = dry, nRec = nRec)
+    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "leach", ymax = ymax,
+                 wet = wet, dry = dry, nRec = nRec)
     
   })
   
@@ -459,13 +501,7 @@ server <- function(input, output, session) {
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
-    
-    # print("plotyieldleach2")
-    # print(nRec)
-    # print(head(data2))
-    # print(head(stdev2))
-    
-    #print(stdev1)
+    ymax <- max(ymax1(),ymax2())
     wetDryData <- wetDryData2() %>%
       filter(fertilizerLbsAc <= max(data2$fert))
     #print(head(wetDryData))
@@ -473,7 +509,6 @@ server <- function(input, output, session) {
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
-    #print(check)
     if(length(check) <=1) {
       ifelse(grepl("Wet", check), wet <- "wet", wet <- "none");
       ifelse(grepl("Dri", check), dry <- "dry", dry <- "none")
@@ -481,10 +516,8 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    #print(paste("wet", wet))
-    #print(paste("dry", dry))
-    #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
-    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "leach", wet = wet, dry = dry, nRec = nRec)
+    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "leach", ymax = ymax,
+                 wet = wet, dry = dry, nRec = nRec)
     
     
     
@@ -500,7 +533,11 @@ server <- function(input, output, session) {
     
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1
-    #print(stdev1)
+    if(is.null(ymax2())) {
+      ymax <- ymax1()
+    } else {
+      ymax <- max(ymax1(), ymax2())
+    }
     wetDryData <- wetDryData1() %>%
       filter(fertilizerLbsAc <= max(data1$fert))
     
@@ -515,10 +552,9 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    #print(paste("wet", wet))
-    #print(paste("dry", dry))
     
-    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "conc", wet = wet, dry = dry, nRec = nRec)
+    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "conc", ymax = ymax, 
+                 wet = wet, dry = dry, nRec = nRec)
     
   })
   
@@ -529,7 +565,7 @@ server <- function(input, output, session) {
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
-    #print(stdev1)
+    ymax <- max(ymax1(),ymax2())
     wetDryData <- wetDryData2() %>%
       filter(fertilizerLbsAc <= max(data2$fert))
     
@@ -544,10 +580,8 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    #print(paste("wet", wet))
-    #print(paste("dry", dry))
-    #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
-    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "conc", wet = wet, dry = dry, nRec = nRec)
+    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "conc",ymax = ymax,
+                 wet = wet, dry = dry, nRec = nRec)
     
     
   })
