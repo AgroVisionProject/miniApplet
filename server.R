@@ -198,15 +198,20 @@ server <- function(input, output, session) {
                        cornPrice = cornPrice, fertPrice = fertPrice)  
     
     data1 <- dataList$modelDF 
-    #print(data1)
+    #print(head(data1))
     
     stdev1 <- dataList$stdevDF %>%
       rename(yld_stdev = stdev_cropyld,
              leach_stdev = stdev_no3leach,
              conc_stdev = stdev_no3conc)
-    #print(stdev1)
     
-    return(list(data1 = data1, stdev1 = stdev1))
+    ymaxes1 <- data.frame(netMax = max(data1$net), yieldMax = max(stdev1$yield) + max(stdev1$yld_stdev), 
+                         leachMax = max(stdev1$leach) + max(stdev1$leach_stdev), 
+                         concMax = max(stdev1$conc) + max(stdev1$conc_stdev))
+    # print(stdev1)
+    # print(ymaxes1)
+    # 
+    return(list(data1 = data1, stdev1 = stdev1, ymaxes1 = ymaxes1))
     
   })
   
@@ -233,35 +238,13 @@ server <- function(input, output, session) {
              leach_stdev = stdev_no3leach,
              conc_stdev = stdev_no3conc)
     #print(stdev1)
+    ymaxes2 <- data.frame(netMax = max(data2$net), yieldMax = max(stdev2$yield) + max(stdev2$yld_stdev), 
+                          leachMax = max(stdev2$leach) + max(stdev2$leach_stdev), 
+                          concMax = max(stdev2$conc) + max(stdev2$conc_stdev))
     
-    return(list(data2 = data2, stdev2 = stdev2))
-    
-  })
-  
-  ##ymax-----------------
-  ymax1 <- reactiveVal()
-  ymax2 <- reactiveVal()
-  
-  observe({
-    req(dat1())
-    
-    ymax = max(max(dat1()$data1$net), c(max(dat1()$data1$yield) + max(dat1()$stdev1$yld_stdev)))
-    #print("observed dat 1 ymax")
-    ymax1(ymax)
+    return(list(data2 = data2, stdev2 = stdev2, ymaxes2 = ymaxes2))
     
   })
-  
-  observe({
-    #req(dat1())
-    req(dat2())
-
-    ymax = max(max(dat1()$data1$net), c(max(dat1()$data1$yield) + max(dat1()$stdev1$yld_stdev)),
-           max(dat2()$data2$net), c(max(dat2()$data2$yield) + max(dat2()$stdev2$yld_stdev)))
-    #print("observed dat 2 ymax")
-    ymax2(ymax)
-
-  })
-  
   
   ## wet dry data----------
   wetDryData1 <- reactive({
@@ -330,76 +313,66 @@ server <- function(input, output, session) {
     
     sim1 <- str_to_title(input$simSelect1)
     sim2 <- str_to_title(input$simSelect2)
+    title <- paste("Responses to Fertilizer N (30 year average)")
+    tagList(
+      tags$h4(title),
+      tabsetPanel(id = "plotTabs",
+        tabPanel("Yield and Return to N",
+                uiOutput("NreturnPlotUI")),
+        tabPanel("Yield and Nitrate Leaching",
+                 uiOutput("leachPlotUI")),
+        tabPanel("Yield and Nitrate Concentration",
+                 uiOutput("concPlotUI")),
+        footer = "Click on legend items to add or remove variables from plot",
+      )
+    )
+    
+  })
+  
+  ## yield and return to N------------------------
+  
+  output$NreturnPlotUI <- renderUI({
+    
+    plotYldAndRtN <- plotlyOutput('plotReturnNSim1', height = "600px")
+    plotYldAndRtN2 <- plotlyOutput('plotReturnNSim2', height = "600px")
+    
     if(input$simSelect2 == "None") {
-      title <- paste("Responses to Fertilizer N (30 year average) in", sim1)
-      plotYldAndRtN <- plotlyOutput('plotYield', height = "600px")
-      plotYldAndLeach <- plotlyOutput('plotYieldLeachSim1', height = "600px")
-      plotYldAndConc <- plotlyOutput('plotYieldConcSim1', height = "600px")
-      tagList(
-        tags$h4(title),
-        tabsetPanel(
-          tabPanel("Yield and Return to N",
-                   plotYldAndRtN),
-          tabPanel("Yield and Nitrate Leaching",
-                   plotYldAndLeach),
-          tabPanel("Yield and Nitrate Concentration",
-                   plotYldAndConc),
-          footer = "Click on legend items to add or remove variables from plot",
-        )
-      )
-      
+      plotYldAndRtN
     } else {
-      title <- paste("Responses to Fertilizer N (30 year average) in", sim1, "and", sim2)
-      plotYldAndRtN <- plotlyOutput('plotYield', height = "600px")
-      plotYldAndRtN2 <- plotlyOutput('plotYieldReturnSim2', height = "600px")
-      plotYldAndLeach <- plotlyOutput('plotYieldLeachSim1', height = "600px")
-      plotYldAndLeach2 <- plotlyOutput('plotYieldLeachSim2', height = "600px")
-      plotYldAndConc <- plotlyOutput('plotYieldConcSim1', height = "600px")
-      plotYldAndConc2 <- plotlyOutput('plotYieldConcSim2', height = "600px")
-      tagList(
-        tags$h4(title),
-        tabsetPanel(
-          tabPanel("Yield and Return to N",
-                   fluidRow(column(6, plotYldAndRtN),
-                            column(6, plotYldAndRtN2))),
-          tabPanel("Yield and Nitrate Leaching",
-                   fluidRow(column(6, plotYldAndLeach),
-                            column(6, plotYldAndLeach2))),
-          tabPanel("Yield and Nitrate Concentration",
-                   fluidRow(column(6, plotYldAndConc),
-                            column(6, plotYldAndConc2))),
-          footer = "Click on legend items to add or remove variables from plot",
-        )
-      )
-      
+      fluidRow(column(6, plotYldAndRtN),
+               column(6, plotYldAndRtN2))
     }
     
   })
   
-  ## yield & return to N plot sim1-----------------------------
+  ### yield & return to N plot sim1-----------------------------
   
-  output$plotYield <- renderPlotly({
+  output$plotReturnNSim1 <- renderPlotly({
     
     
     req(dat1())
     nRec <- fertRec1()
-    #print("nrec")
-    #print(nRec)
-    
+    simSystem <- filter(sims, cropSystem == input$simSelect1) 
+    simName = simSystem$cropSystem
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1
-    if(is.null(ymax2())) {
-      #print("null")
-      ymax <- ymax1()
+    if(input$simSelect2 == "None") {
+      yLmax <- dat1()$ymaxes1$yieldMax
+      yRmax <- dat1()$ymaxes1$netMax
     } else {
-      ymax <- max(ymax1(), ymax2())
+      yLmax <- max(dat1()$ymaxes1$yieldMax, dat2()$ymaxes2$yieldMax)
+      yRmax <- max(dat1()$ymaxes1$netMax, dat2()$ymaxes2$netMax)
     }
-    #ymax <- ymax1()
-    # print("inside plot1")
-    # print("ymax")
-    # print(ymax1())
-    # print(ymax)
+    
+    print("yLmax")
+    print(yLmax)
+    print("yRmax")
+    print(yRmax)
+    # print(yLmax1())
+    # print(yLmax)
     #print(stdev1)
+    
+    ##TODO check max fert vals from both dfs
     wetDryData <- wetDryData1() %>%
       filter(fertilizerLbsAc <= max(data1$fert))
     
@@ -417,20 +390,33 @@ server <- function(input, output, session) {
     #print(paste("wet", wet))
     #print(paste("dry", dry))
     #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
-    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "rtn", ymax = ymax,
+    makeSim1plot(simName = simName, simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "net", yLmax = yLmax, yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
     
   })
   
   
-  ## yield & return to N plot sim2-----------------------------
+  ### yield & return to N plot sim2-----------------------------
   
-  output$plotYieldReturnSim2 <- renderPlotly({
+  output$plotReturnNSim2 <- renderPlotly({
     
+    simSystem <- filter(sims, cropSystem == input$simSelect2) 
+    simName = simSystem$cropSystem
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
-    ymax <- max(ymax1(),ymax2())
+    yLmax <- max(dat1()$ymaxes1$yieldMax,dat2()$ymaxes2$yieldMax)
+    yRmax <- max(dat1()$ymaxes1$netMax, dat2()$ymaxes2$netMax)
+    print("yLmax")
+    print(yLmax)
+    print("yRmax")
+    print(yRmax)
+    # yLmax <- max(yLmax1(),yLmax2())
+    # yRmax <- max(yRmax1(),yRmax2())
+    # print("yLmax")
+    # print(yLmax)
+    # print("yRmax")
+    # print(yRmax)
     #print(stdev1)
     wetDryData <- wetDryData2() %>%
       filter(fertilizerLbsAc <= max(data2$fert))
@@ -449,27 +435,60 @@ server <- function(input, output, session) {
     #print(paste("wet", wet))
     #print(paste("dry", dry))
     #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
-    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "rtn", ymax = ymax,
+    makeSim1plot(simName = simName, simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "net", yLmax = yLmax, yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
     
     
     
   })
   
-  ## yield and leaching plot sim1----------------------
+  ## yield and leach------------------------
   
-  output$plotYieldLeachSim1 <- renderPlotly({
+  output$leachPlotUI <- renderUI({
+    
+    plotYldAndLeach <- plotlyOutput('plotLeachSim1', height = "600px")
+    plotYldAndLeach2 <- plotlyOutput('plotLeachSim2', height = "600px")
+    
+    if(input$simSelect2 == "None") {
+      plotYldAndLeach
+    } else {
+      fluidRow(column(6, plotYldAndLeach),
+               column(6, plotYldAndLeach2))
+    }
+    
+  })
+  
+  ### yield and leaching plot sim1----------------------
+  
+  output$plotLeachSim1 <- renderPlotly({
     
     req(dat1())
     nRec <- fertRec1()
     
+    simSystem <- filter(sims, cropSystem == input$simSelect1) 
+    simName = simSystem$cropSystem
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1
-    if(is.null(ymax2())) {
-      ymax <- ymax1()
+    if(input$simSelect2 == "None") {
+      yLmax <- dat1()$ymaxes1$yieldMax
+      yRmax <- dat1()$ymaxes1$leachMax
     } else {
-      ymax <- max(ymax1(), ymax2())
+      yLmax <- max(dat1()$ymaxes1$yieldMax, dat2()$ymaxes2$yieldMax)
+      yRmax <- max(dat1()$ymaxes1$leachMax, dat2()$ymaxes2$leachMax)
     }
+    
+    print("yLmax")
+    print(yLmax)
+    print("yRmax")
+    print(yRmax)
+    # if(is.null(yLmax2())) {
+    #   #print("null")
+    #   yLmax <- yLmax1()
+    #   yRmax <- yRmax1()
+    # } else {
+    #   yLmax <- max(yLmax1(), yLmax2())
+    #   yRmax <- max(yRmax1(), yRmax2())
+    # }
     #print(head(stdev1))
     wetDryData <- wetDryData1() %>%
       filter(fertilizerLbsAc <= max(data1$fert))
@@ -489,19 +508,26 @@ server <- function(input, output, session) {
     #print(paste("wet", wet))
     #print(paste("dry", dry))
     
-    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "leach", ymax = ymax,
+    makeSim1plot(simName = simName, simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "leach", yLmax = yLmax, yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
     
   })
   
-  ## yield and leaching plot sim2------------
+  ### yield and leaching plot sim2------------
   
-  output$plotYieldLeachSim2 <- renderPlotly({
+  output$plotLeachSim2 <- renderPlotly({
     
+    simSystem <- filter(sims, cropSystem == input$simSelect2) 
+    simName = simSystem$cropSystem
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
-    ymax <- max(ymax1(),ymax2())
+    yLmax <- max(dat1()$ymaxes1$yieldMax,dat2()$ymaxes2$yieldMax)
+    yRmax <- max(dat1()$ymaxes1$leachMax, dat2()$ymaxes2$leachMax)
+    print("yLmax")
+    print(yLmax)
+    print("yRmax")
+    print(yRmax)
     wetDryData <- wetDryData2() %>%
       filter(fertilizerLbsAc <= max(data2$fert))
     #print(head(wetDryData))
@@ -516,7 +542,7 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "leach", ymax = ymax,
+    makeSim1plot(simName = simName, simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "leach", yLmax = yLmax, yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
     
     
@@ -524,20 +550,44 @@ server <- function(input, output, session) {
     
   })
   
-  ## yield and concentration plot sim1----------------------
+  ## yield and conc------------------------
   
-  output$plotYieldConcSim1 <- renderPlotly({
+  output$concPlotUI <- renderUI({
+    
+    plotYldAndConc <- plotlyOutput('plotConcSim1', height = "600px")
+    plotYldAndConc2 <- plotlyOutput('plotConcSim2', height = "600px")
+    
+    if(input$simSelect2 == "None") {
+      plotYldAndConc
+    } else {
+      fluidRow(column(6, plotYldAndConc),
+               column(6, plotYldAndConc2))
+    }
+    
+  })
+  
+  ###yield and concentration plot sim1----------------------
+  
+  output$plotConcSim1 <- renderPlotly({
     
     req(dat1())
     nRec <- fertRec1()
-    
+    simSystem <- filter(sims, cropSystem == input$simSelect1) 
+    simName = simSystem$cropSystem
     data1 <- dat1()$data1
     stdev1 <- dat1()$stdev1
-    if(is.null(ymax2())) {
-      ymax <- ymax1()
+    if(input$simSelect2 == "None") {
+      yLmax <- dat1()$ymaxes1$yieldMax
+      yRmax <- dat1()$ymaxes1$concMax
     } else {
-      ymax <- max(ymax1(), ymax2())
+      yLmax <- max(dat1()$ymaxes1$yieldMax, dat2()$ymaxes2$yieldMax)
+      yRmax <- max(dat1()$ymaxes1$concMax, dat2()$ymaxes2$concMax)
     }
+    
+    print("yLmax")
+    print(yLmax)
+    print("yRmax")
+    print(yRmax)
     wetDryData <- wetDryData1() %>%
       filter(fertilizerLbsAc <= max(data1$fert))
     
@@ -553,19 +603,26 @@ server <- function(input, output, session) {
       dry <- "dry"
     }
     
-    makeSim1plot(simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "conc", ymax = ymax, 
+    makeSim1plot(simName = simName, simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "conc", yLmax = yLmax,  yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
     
   })
   
-  ## yield and concentration plot sim2----------------------
+  ### yield and concentration plot sim2----------------------
   
-  output$plotYieldConcSim2 <- renderPlotly({
+  output$plotConcSim2 <- renderPlotly({
     
+    simSystem <- filter(sims, cropSystem == input$simSelect2) 
+    simName = simSystem$cropSystem
     data2 <- dat2()$data2
     stdev2 <- dat2()$stdev2
     nRec <- fertRec2()
-    ymax <- max(ymax1(),ymax2())
+    yLmax <- max(dat1()$ymaxes1$yieldMax,dat2()$ymaxes2$yieldMax)
+    yRmax <- max(dat1()$ymaxes1$concMax, dat2()$ymaxes2$concMax)
+    print("yLmax")
+    print(yLmax)
+    print("yRmax")
+    print(yRmax)
     wetDryData <- wetDryData2() %>%
       filter(fertilizerLbsAc <= max(data2$fert))
     
@@ -580,7 +637,7 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    makeSim1plot(simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "conc",ymax = ymax,
+    makeSim1plot(simName = simName, simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "conc",yLmax = yLmax, yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
     
     
@@ -640,9 +697,9 @@ server <- function(input, output, session) {
     
     newdat1 <- dat1()$data1 %>%
       filter(fert == input$range_dat1) %>%
-      mutate(leaching = round(leaching, 1),
+      mutate(leaching = round(leach, 1),
              yield = round(yield, 1),
-             concentration = round(concentration, 1),
+             concentration = round(conc, 1),
              net = round(net, 1))
     
     # remove duplicates
@@ -686,9 +743,9 @@ server <- function(input, output, session) {
     newdat2 <- dat2()$data2 %>%
       #filter(fert == 150) %>%
       filter(fert == input$range_dat2) %>%
-      mutate(leaching = round(leaching, 1),
+      mutate(leaching = round(leach, 1),
              yield = round(yield, 1),
-             concentration = round(concentration, 1),
+             concentration = round(conc, 1),
              net = round(net, 1))
     
     # remove duplicates
@@ -723,10 +780,10 @@ server <- function(input, output, session) {
     content = function(file) {
       df <- dat1()$data1 %>%
         rename(fertLbsAc = fert,
-               yield = yield1,
-               no3_leach = leach1,
-               no3_conc = conc1,
-               returnToN = net1)
+               yield = yield,
+               no3_leach = leach,
+               no3_conc = conc,
+               returnToN = net)
       write.csv(df, file, row.names = FALSE)
     }
   )
@@ -738,6 +795,10 @@ server <- function(input, output, session) {
       clearGroup("cur_site") %>%
       setView(lat = 43.0, lng = -92.5, zoom = 5) 
     selectedSite(NULL)
+    # yLmax1(NULL)
+    # yLmax2(NULL)
+    # yRmax1(NULL)
+    # yRmax2(NULL)
     
   })
   
