@@ -22,8 +22,8 @@ ui <- fluidPage(
              )),
   
   sidebarLayout(
-    sidebarPanel(h5(em("Select a location, by zooming in either by clicking on the map or using the plus/minus buttons,
-                    to view corn yield and nitrate leaching responses to fertilizer N.")),
+    sidebarPanel(h5("Select a location to view corn yield and nitrate leaching responses to fertilizer N."),
+                 h5("Zoom to location either by clicking on the map or using the", strong("Plus +"), "or", strong("Minus -"), "buttons."),
                  #h3("To view site specific corn yield and nitrate leaching responses to fertilizer N."),
                  br(),
                  actionButton("reset", "Clear locations"),
