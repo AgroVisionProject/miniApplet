@@ -81,8 +81,6 @@ server <- function(input, output, session) {
   observe({
     req(selectedSite())
     zoom <- input$map_zoom
-    # print("zoom")
-    # print(zoom)
     if(zoom < 10) {
       leafletProxy("map") %>%
         clearGroup("cur_site")
@@ -186,8 +184,6 @@ server <- function(input, output, session) {
     req(input$simSelect1)
     req(input$cornPrice)
     req(input$fertPrice)
-    #print("inside dat 1")
-    #print(selectedSite())
     
     siteID <- selectedSite()$id
     cornPrice <- input$cornPrice
@@ -208,9 +204,7 @@ server <- function(input, output, session) {
     ymaxes1 <- data.frame(netMax = max(data1$net), yieldMax = max(stdev1$yield) + max(stdev1$yld_stdev), 
                          leachMax = max(stdev1$leach) + max(stdev1$leach_stdev), 
                          concMax = max(stdev1$conc) + max(stdev1$conc_stdev))
-    # print(stdev1)
-    # print(ymaxes1)
-    # 
+    
     return(list(data1 = data1, stdev1 = stdev1, ymaxes1 = ymaxes1))
     
   })
@@ -257,7 +251,6 @@ server <- function(input, output, session) {
     simulation1 <- filter(sims, cropSystem == input$simSelect1) 
     
     wetDryDF <- makeWetDryDF(sim = simulation1$simulation, site_ID = siteID)
-    #print(wetDryDF)
     
     return(wetDryDF)
     
@@ -322,8 +315,8 @@ server <- function(input, output, session) {
         tabPanel("Yield and Nitrate Leaching",
                  uiOutput("leachPlotUI")),
         tabPanel("Yield and Nitrate Concentration",
-                 uiOutput("concPlotUI")),
-        footer = "Click on legend items to add or remove variables from plot",
+                 uiOutput("concPlotUI"))#,
+        #footer = "Click on legend items to add or remove variables from plot",
       )
     )
     
@@ -364,17 +357,13 @@ server <- function(input, output, session) {
       yRmax <- max(dat1()$ymaxes1$netMax, dat2()$ymaxes2$netMax)
     }
     
-    print("yLmax")
-    print(yLmax)
-    print("yRmax")
-    print(yRmax)
-    # print(yLmax1())
-    # print(yLmax)
-    #print(stdev1)
     
     ##TODO check max fert vals from both dfs
-    wetDryData <- wetDryData1() %>%
-      filter(fertilizerLbsAc <= max(data1$fert))
+    wetDryData <- wetDryData1() #%>%
+      #filter(fertilizerLbsAc <= max(data1$fert))
+    # print(max(wetDryData$fertilizerLbsAc))
+    # print(max(data1$fert))
+    # print(max(stdev1$fertilizerLbsAc))
     
     wet <- "none"
     dry <- "none"
@@ -387,9 +376,7 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    #print(paste("wet", wet))
-    #print(paste("dry", dry))
-    #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
+    
     makeSim1plot(simName = simName, simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "net", yLmax = yLmax, yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
     
@@ -407,24 +394,13 @@ server <- function(input, output, session) {
     nRec <- fertRec2()
     yLmax <- max(dat1()$ymaxes1$yieldMax,dat2()$ymaxes2$yieldMax)
     yRmax <- max(dat1()$ymaxes1$netMax, dat2()$ymaxes2$netMax)
-    print("yLmax")
-    print(yLmax)
-    print("yRmax")
-    print(yRmax)
-    # yLmax <- max(yLmax1(),yLmax2())
-    # yRmax <- max(yRmax1(),yRmax2())
-    # print("yLmax")
-    # print(yLmax)
-    # print("yRmax")
-    # print(yRmax)
-    #print(stdev1)
-    wetDryData <- wetDryData2() %>%
-      filter(fertilizerLbsAc <= max(data2$fert))
+   
+    wetDryData <- wetDryData2() #%>%
+      #filter(fertilizerLbsAc <= max(data2$fert))
     
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
-    #print(check)
     if(length(check) <=1) {
       ifelse(grepl("Wet", check), wet <- "wet", wet <- "none");
       ifelse(grepl("Dri", check), dry <- "dry", dry <- "none")
@@ -432,9 +408,7 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    #print(paste("wet", wet))
-    #print(paste("dry", dry))
-    #makeSim1plot(simDat = modelDF1, wetDryDat = wetDryData, stdevDF = stdevDF, variable = "leach", wet = "wet", dry = "dry")
+    
     makeSim1plot(simName = simName, simDat = data2, stdevDF = stdev2, wetDryDat = wetDryData, variable = "net", yLmax = yLmax, yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
     
@@ -477,27 +451,12 @@ server <- function(input, output, session) {
       yRmax <- max(dat1()$ymaxes1$leachMax, dat2()$ymaxes2$leachMax)
     }
     
-    print("yLmax")
-    print(yLmax)
-    print("yRmax")
-    print(yRmax)
-    # if(is.null(yLmax2())) {
-    #   #print("null")
-    #   yLmax <- yLmax1()
-    #   yRmax <- yRmax1()
-    # } else {
-    #   yLmax <- max(yLmax1(), yLmax2())
-    #   yRmax <- max(yRmax1(), yRmax2())
-    # }
-    #print(head(stdev1))
-    wetDryData <- wetDryData1() %>%
-      filter(fertilizerLbsAc <= max(data1$fert))
-    #print(head(wetDryData))
+    wetDryData <- wetDryData1() #%>%
+      #filter(fertilizerLbsAc <= max(data1$fert))
     
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
-    #print(check)
     if(length(check) <=1) {
       ifelse(grepl("Wet", check), wet <- "wet", wet <- "none");
       ifelse(grepl("Dri", check), dry <- "dry", dry <- "none")
@@ -505,8 +464,6 @@ server <- function(input, output, session) {
       wet <- "wet";
       dry <- "dry"
     }
-    #print(paste("wet", wet))
-    #print(paste("dry", dry))
     
     makeSim1plot(simName = simName, simDat = data1, stdevDF = stdev1, wetDryDat = wetDryData, variable = "leach", yLmax = yLmax, yRmax = yRmax,
                  wet = wet, dry = dry, nRec = nRec)
@@ -524,13 +481,8 @@ server <- function(input, output, session) {
     nRec <- fertRec2()
     yLmax <- max(dat1()$ymaxes1$yieldMax,dat2()$ymaxes2$yieldMax)
     yRmax <- max(dat1()$ymaxes1$leachMax, dat2()$ymaxes2$leachMax)
-    print("yLmax")
-    print(yLmax)
-    print("yRmax")
-    print(yRmax)
-    wetDryData <- wetDryData2() %>%
-      filter(fertilizerLbsAc <= max(data2$fert))
-    #print(head(wetDryData))
+    wetDryData <- wetDryData2() #%>%
+      #filter(fertilizerLbsAc <= max(data2$fert))
     
     wet <- "none"
     dry <- "none"
@@ -583,18 +535,12 @@ server <- function(input, output, session) {
       yLmax <- max(dat1()$ymaxes1$yieldMax, dat2()$ymaxes2$yieldMax)
       yRmax <- max(dat1()$ymaxes1$concMax, dat2()$ymaxes2$concMax)
     }
-    
-    print("yLmax")
-    print(yLmax)
-    print("yRmax")
-    print(yRmax)
-    wetDryData <- wetDryData1() %>%
-      filter(fertilizerLbsAc <= max(data1$fert))
+    wetDryData <- wetDryData1() #%>%
+      #filter(fertilizerLbsAc <= max(data1$fert))
     
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
-    #print(check)
     if(length(check) <=1) {
       ifelse(grepl("Wet", check), wet <- "wet", wet <- "none");
       ifelse(grepl("Dri", check), dry <- "dry", dry <- "none")
@@ -619,17 +565,12 @@ server <- function(input, output, session) {
     nRec <- fertRec2()
     yLmax <- max(dat1()$ymaxes1$yieldMax,dat2()$ymaxes2$yieldMax)
     yRmax <- max(dat1()$ymaxes1$concMax, dat2()$ymaxes2$concMax)
-    print("yLmax")
-    print(yLmax)
-    print("yRmax")
-    print(yRmax)
-    wetDryData <- wetDryData2() %>%
-      filter(fertilizerLbsAc <= max(data2$fert))
+    wetDryData <- wetDryData2()# %>%
+      #filter(fertilizerLbsAc <= max(data2$fert))
     
     wet <- "none"
     dry <- "none"
     check <- input$wetDry
-    #print(check)
     if(length(check) <=1) {
       ifelse(grepl("Wet", check), wet <- "wet", wet <- "none");
       ifelse(grepl("Dri", check), dry <- "dry", dry <- "none")
@@ -651,7 +592,6 @@ server <- function(input, output, session) {
     #req(vals$count >= 1)
     req(input$simSelect1)
     req(selectedSite())
-    print(input$simSelect2)
     
     tagList(
       uiOutput("values1"),
@@ -679,7 +619,6 @@ server <- function(input, output, session) {
     
     maxFert <- max(dat1()$data1$fert)
     nRec <- fertRec1()
-    #print(maxFert)
     
     sliderInput(
       inputId = "range_dat1",
@@ -691,9 +630,7 @@ server <- function(input, output, session) {
   
   output$values1 <- render_gt({
     
-    #req(length(input$simSelect1) == 1)
     req(input$range_dat1)
-    #print(dat1()$data1)
     
     newdat1 <- dat1()$data1 %>%
       filter(fert == input$range_dat1) %>%
@@ -724,7 +661,6 @@ server <- function(input, output, session) {
     
     maxFert <- max(dat2()$data2$fert)
     nRec <- fertRec2()
-    #print(maxFert)
     
     sliderInput(
       inputId = "range_dat2",
@@ -767,24 +703,45 @@ server <- function(input, output, session) {
   
   # download data--------------
   
-  shinyjs::disable("download")
+  shinyjs::disable("downloadSim")
   observeEvent(dat1(), {
-    shinyjs::enable("download")
+    shinyjs::enable("downloadSim")
   })
   
-  output$download <- downloadHandler(
+  output$downloadSim <- downloadHandler(
     
     filename = function() {
-      paste0(selectedSite()$county, "_", selectedSite()$state, "_", input$simSelect1, ".csv")
+      paste0("NitrogenDST_", selectedSite()$county, "_", selectedSite()$state, ".csv")
     },
     content = function(file) {
-      df <- dat1()$data1 %>%
+      
+      management1 <- rep(input$simSelect1, nrow(dat1()$data1))
+      df1 <- dat1()$data1 %>%
+        bind_cols(management = management1) %>%
         rename(fertLbsAc = fert,
                yield = yield,
                no3_leach = leach,
                no3_conc = conc,
                returnToN = net)
-      write.csv(df, file, row.names = FALSE)
+      
+      if(input$simSelect2 == "None") {
+        
+        write.csv(df1, file, row.names = FALSE)
+        
+      } else {
+        
+        management2 <- rep(input$simSelect2, nrow(dat2()$data2))
+        df2 <- dat2()$data2 %>%
+          bind_cols(management = management2) %>%
+          rename(fertLbsAc = fert,
+                 yield = yield,
+                 no3_leach = leach,
+                 no3_conc = conc,
+                 returnToN = net) %>%
+          bind_rows(df1)
+        
+        write.csv(df2, file, row.names = FALSE)
+      }
     }
   )
   

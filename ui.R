@@ -22,13 +22,13 @@ ui <- fluidPage(
              )),
   
   sidebarLayout(
-    sidebarPanel(h5(em("Zoom in to a location by either clicking on the map or zooming in using the zoom feature on the map,
+    sidebarPanel(h5(em("Select a location, by zooming in either by clicking on the map or using the plus/minus buttons,
                     to view corn yield and nitrate leaching responses to fertilizer N.")),
                  #h3("To view site specific corn yield and nitrate leaching responses to fertilizer N."),
                  br(),
                  actionButton("reset", "Clear locations"),
                  shinyjs::useShinyjs(),
-                 downloadButton("download", "Download Data"),
+                 downloadButton("downloadSim", "Download Data"),
                  hr(),
                  shinyjs::useShinyjs(),
                  uiOutput("simSelectionUI"),
